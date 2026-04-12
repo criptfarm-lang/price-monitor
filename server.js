@@ -231,11 +231,16 @@ async function loadMSData() {
       const stockResp = await msGet(`/report/stock/all?stockMode=all&limit=1000&offset=${offset}`);
       const rows = stockResp.rows || [];
       rows.forEach(r => {
-        const href = r.assortment?.meta?.href || r.meta?.href || '';
-        const id = href ? href.split('/').pop() : r.id;
+        // В /report/stock/all id товара в meta.href напрямую
+        const href = r.meta?.href || '';
+        // убираем ?expand=supplier если есть
+        const cleanHref = href.split('?')[0];
+        const id = cleanHref ? cleanHref.split('/').pop() : r.id;
         if (id) {
           stockMap[id] = (stockMap[id] || 0) + (r.stock || 0);
-          if (r.avgCost > 0) costMap[id] = r.avgCost / 100;
+          // price в отчёте = себестоимость в копейках
+          if (r.price > 0) costMap[id] = r.price / 100;
+          else if (r.avgCost > 0) costMap[id] = r.avgCost / 100;
         }
       });
       if (rows.length < 1000) break;
