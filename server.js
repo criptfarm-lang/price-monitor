@@ -205,9 +205,13 @@ async function getSalesData(dateFrom, dateTo) {
 
 // ─── Main data loader ──────────────────────────────────────────
 async function loadMSData() {
-  // 1. Price types
-  const ptResp = await msGet('/entity/pricetype');
-  const priceTypes = (ptResp.rows || []);
+  // 1. Price types — берём из первого товара
+  const ptSample = await msGet('/entity/product?limit=1');
+  const sampleProduct = ptSample.rows?.[0];
+  const priceTypes = (sampleProduct?.salePrices || []).map(sp => ({
+    id: sp.priceType?.id || sp.priceType?.meta?.href?.split('/').pop() || '',
+    name: sp.priceType?.name || 'Цена'
+  }));
 
   // 2. Products (non-archived)
   const products = await msGetAll('/entity/product?archived=false');
