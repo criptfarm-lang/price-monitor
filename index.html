@@ -89,7 +89,7 @@ td{padding:7px 9px;vertical-align:middle}
 /* CELLS */
 .drag-h{cursor:grab;color:var(--text3);padding:0 3px;user-select:none;font-size:15px}
 .drag-h:active{cursor:grabbing}
-.pname{font-weight:500;max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pname{font-weight:500;max-width:340px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pcode{font-family:var(--mono);font-size:10px;color:var(--text3);margin-top:1px}
 .catpill{display:inline-block;background:var(--bg3);border:1px solid var(--border);border-radius:3px;padding:1px 6px;font-size:10px;color:var(--text2);font-family:var(--mono)}
 .stock{font-family:var(--mono);font-size:11px;font-weight:500}
@@ -237,7 +237,6 @@ input.pinput.changed + .savebtn{display:inline-block}
       <tr>
         <th style="width:20px"></th>
         <th onclick="sortBy('name')" id="th-name">Товар ⇅</th>
-        <th onclick="sortBy('category')">Категория ⇅</th>
         <th onclick="sortBy('stock')">Остаток ⇅</th>
         <th onclick="sortBy('costPrice')">Себест. ⇅</th>
         <th id="th-p0" onclick="sortBy('p0')">Цена 1 ⇅</th>
@@ -457,7 +456,6 @@ function buildRow(p) {
       <div class="pname" title="${esc(p.name)}">${esc(p.name)}</div>
       ${p.code?`<div class="pcode">${esc(p.code)}</div>`:''}
     </td>
-    <td><span class="catpill">${esc(p.category)}</span></td>
     <td><span class="stock ${p.stock>0?'in':'out'}">${p.stock>0?'● '+p.stock:'○ 0'}</span></td>
     <td class="pcell">${p.costPrice>0?fmt(p.costPrice):'<span class="muted">—</span>'}</td>
     ${pCells}
