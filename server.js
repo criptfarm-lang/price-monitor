@@ -99,7 +99,9 @@ function msVal(v) { return (v || v===0) ? v/100 : null; }
 
 function buildProduct(p, stockMap, costMap, salesThis, salesLast, priceTypes) {
   const stock = stockMap[p.id] ?? 0;
-  const costPrice = costMap[p.id] || msVal(p.buyPrice?.value) || 0;
+  // Для готовой продукции себестоимость из отчёта прибыльности точнее
+  const costFromSales = salesThis[p.id]?.avgCost || salesLast[p.id]?.avgCost || 0;
+  const costPrice = costFromSales || costMap[p.id] || msVal(p.buyPrice?.value) || 0;
 
   // All sale prices in order of priceTypes
   const prices = priceTypes.map(pt => {
@@ -154,52 +156,102 @@ function buildProduct(p, stockMap, costMap, salesThis, salesLast, priceTypes) {
   };
 }
 
-// ─── Sales aggregation ────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────
+function median(arr) {
+  if (!arr.length) return 0;
+  const s = [...arr].sort((a,b) => a-b);
+  const m = Math.floor(s.length/2);
+  return s.length % 2 ? s[m] : (s[m-1]+s[m])/2;
+}
+
+// Убираем выбросы отклоняющиеся более чем на 80% от медианы (порог 20%)
+function trimmedAvg(values) {
+  if (!values.length) return null;
+  if (values.length === 1) return values[0];
+  const med = median(values);
+  if (med === 0) return null;
+  const filtered = values.filter(v => Math.abs(v - med) / med <= 0.80);
+  if (!filtered.length) return med;
+  return filtered.reduce((a,b) => a+b, 0) / filtered.length;
+}
+
+// ─── Sales + cost via demands (с фильтрацией выбросов себест.) ─
 async function getSalesData(dateFrom, dateTo) {
   const result = {};
+  const costSamples = {}; // id -> [cost per unit, ...]
+
   try {
-    // Use sales by product report
-    const report = await msGet(
-      `/report/sales/byproduct?momentFrom=${dateFrom} 00:00:00&momentTo=${dateTo} 23:59:59&limit=1000`
-    );
-    (report.rows || []).forEach(row => {
-      const href = row.assortment?.meta?.href || '';
-      const id = href.split('/').pop();
-      if (!id) return;
-      const revenue = msVal(row.sellSum) || 0;
-      const qty = row.sellQuantity || 0;
-      result[id] = {
-        avgPrice: qty > 0 ? revenue / qty : 0,
-        qty
-      };
-    });
-  } catch(e) {
-    console.warn('Sales report failed, trying demands:', e.message);
-    // Fallback: parse demands
-    try {
-      const demands = await msGetAll(
-        `/entity/demand?filter=moment>=${dateFrom} 00:00:00;moment<=${dateTo} 23:59:59&expand=positions.assortment`
+    // Сначала пробуем profit/byproduct — быстро, без выбросов (агрегат)
+    let offset = 0;
+    while (true) {
+      const report = await msGet(
+        `/report/profit/byproduct?momentFrom=${dateFrom} 00:00:00&momentTo=${dateTo} 23:59:59&limit=1000&offset=${offset}`
       );
-      for (const demand of demands) {
-        const positions = demand.positions?.rows || [];
-        for (const pos of positions) {
-          const href = pos.assortment?.meta?.href || pos.assortment?.id || '';
-          const id = typeof href === 'string' ? href.split('/').pop() : href;
-          if (!id) continue;
-          const price = msVal(pos.price) || 0;
-          const qty = pos.quantity || 0;
-          if (!result[id]) result[id] = { totalRev: 0, totalQty: 0, avgPrice: 0 };
-          result[id].totalRev += price * qty;
-          result[id].totalQty += qty;
+      const rows = report.rows || [];
+      rows.forEach(row => {
+        const href = row.assortment?.meta?.href || '';
+        const id = href.split('/').pop();
+        if (!id) return;
+        const sellQty = row.sellQuantity || 0;
+        const sellSum = msVal(row.sellSum) || 0;
+        const costSum = msVal(row.costSum) || 0;
+        if (sellQty > 0) {
+          result[id] = { avgPrice: sellSum / sellQty, qty: sellQty };
+          // costSum/sellQty — это уже агрегат, сохраняем как sample
+          const costPerUnit = costSum / sellQty;
+          if (costPerUnit > 0) {
+            if (!costSamples[id]) costSamples[id] = [];
+            costSamples[id].push(costPerUnit);
+          }
+        }
+      });
+      if (rows.length < 1000) break;
+      offset += 1000;
+    }
+    console.log('Profit report OK:', Object.keys(result).length, 'products');
+  } catch(e) {
+    console.warn('Profit report failed:', e.message);
+  }
+
+  // Для каждого товара — собираем себестоимость по отдельным отгрузкам
+  // чтобы можно было отфильтровать выбросы
+  try {
+    const demands = await msGetAll(
+      `/entity/demand?filter=moment>=${dateFrom} 00:00:00;moment<=${dateTo} 23:59:59&expand=positions`
+    );
+    for (const demand of demands) {
+      const positions = demand.positions?.rows || demand.positions || [];
+      for (const pos of positions) {
+        const href = pos.assortment?.meta?.href || '';
+        const id = href.split('/').pop();
+        if (!id) continue;
+        const cost = msVal(pos.cost) || 0;   // себестоимость единицы
+        const price = msVal(pos.price) || 0;
+        const qty = pos.quantity || 0;
+        if (qty <= 0) continue;
+        // Обновляем продажи если profit report не дал данных
+        if (!result[id] && price > 0) {
+          result[id] = { avgPrice: price, qty };
+        }
+        if (cost > 0) {
+          if (!costSamples[id]) costSamples[id] = [];
+          costSamples[id].push(cost);
         }
       }
-      Object.values(result).forEach(r => {
-        if (r.totalQty > 0) r.avgPrice = r.totalRev / r.totalQty;
-      });
-    } catch(e2) {
-      console.warn('Demands fallback failed:', e2.message);
     }
+  } catch(e) {
+    console.warn('Demands expand failed:', e.message);
   }
+
+  // Применяем trimmedAvg к себестоимостям
+  Object.keys(costSamples).forEach(id => {
+    const avg = trimmedAvg(costSamples[id]);
+    if (avg !== null && avg > 0) {
+      if (!result[id]) result[id] = { avgPrice: 0, qty: 0 };
+      result[id].avgCost = avg;
+    }
+  });
+
   return result;
 }
 
@@ -267,7 +319,11 @@ async function loadMSData() {
   ]);
 
   // 5. Build
-    const built = products.map(p => buildProduct(p, stockMap, costMap, salesThis, salesLast, priceTypes));
+    // Merge cost from sales into costMap
+  Object.keys(salesThis).forEach(id => {
+    if (salesThis[id].avgCost) costMap[id] = salesThis[id].avgCost;
+  });
+  const built = products.map(p => buildProduct(p, stockMap, costMap, salesThis, salesLast, priceTypes));
 
   return {
     products: built,
