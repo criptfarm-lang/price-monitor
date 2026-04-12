@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Монитор цен</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0f1117; --bg2:#161920; --bg3:#1e2230; --border:#2a2f3f;
+  --text:#e8eaf0; --text2:#8892a4; --text3:#4a5568;
+  --accent:#4f8ef7; --green:#34d399; --red:#f87171; --yellow:#fbbf24;
+  --mono:'IBM Plex Mono',monospace; --sans:'IBM Plex Sans',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:13px;min-height:100vh}
+
+/* HEADER */
+.hdr{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 20px;display:flex;align-items:center;gap:16px;height:50px;position:sticky;top:0;z-index:100}
+.logo{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--accent);letter-spacing:.05em;white-space:nowrap}
+.vsep{width:1px;height:26px;background:var(--border)}
+.status{font-size:11px;color:var(--text3);font-family:var(--mono);display:flex;align-items:center;gap:6px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--text3)}
+.dot.ok{background:var(--green);box-shadow:0 0 6px var(--green)}
+.dot.err{background:var(--red)}
+.dot.spin{background:var(--yellow);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.hdr-right{margin-left:auto;display:flex;gap:8px;align-items:center}
+
+/* TABS */
+.tabs{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 20px;display:flex}
+.tab{padding:9px 16px;font-size:12px;font-weight:500;color:var(--text2);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;user-select:none}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.badge{display:inline-block;background:var(--bg3);border-radius:10px;padding:1px 7px;font-size:10px;margin-left:5px;font-family:var(--mono)}
+.tab.active .badge{background:rgba(79,142,247,.2);color:var(--accent)}
+
+/* TOOLBAR */
+.toolbar{padding:10px 20px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--border)}
+.search{position:relative;flex:1;min-width:180px;max-width:300px}
+.search-icon{position:absolute;left:8px;top:50%;transform:translateY(-50%);color:var(--text3);pointer-events:none}
+input.sinput{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:12px;padding:5px 8px 5px 26px;outline:none;font-family:var(--sans);transition:border-color .15s}
+input.sinput:focus{border-color:var(--accent)}
+input.sinput::placeholder{color:var(--text3)}
+select.sel{background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:12px;padding:5px 10px;outline:none;font-family:var(--sans);cursor:pointer}
+select.sel:focus{border-color:var(--accent)}
+.upload-btn{display:flex;align-items:center;gap:5px;background:var(--bg3);border:1px dashed var(--border);border-radius:4px;color:var(--text2);font-size:12px;padding:5px 12px;cursor:pointer;transition:all .15s;font-family:var(--sans)}
+.upload-btn:hover{border-color:var(--accent);color:var(--accent)}
+
+/* BUTTONS */
+.btn{background:var(--accent);color:#fff;border:none;border-radius:4px;padding:5px 14px;font-family:var(--sans);font-size:12px;font-weight:500;cursor:pointer;transition:opacity .15s;white-space:nowrap}
+.btn:hover{opacity:.85}
+.btn.sec{background:var(--bg3);border:1px solid var(--border);color:var(--text2)}
+.btn.sec:hover{border-color:var(--accent);color:var(--accent)}
+.btn.danger{background:transparent;border:1px solid var(--red);color:var(--red)}
+.btn.sm{padding:3px 10px;font-size:11px}
+
+/* STATS */
+.stats{display:flex;gap:10px;padding:12px 20px;flex-wrap:wrap}
+.scard{background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:10px 14px;min-width:130px;flex:1;max-width:180px}
+.slabel{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;font-family:var(--mono);margin-bottom:3px}
+.sval{font-size:20px;font-weight:600;font-family:var(--mono);line-height:1}
+.ssub{font-size:10px;color:var(--text2);margin-top:2px}
+
+/* PDF PANEL */
+.pdf-panel{background:var(--bg2);border:1px solid var(--border);border-radius:6px;margin:0 20px 12px;padding:12px 14px;display:none}
+.pdf-panel.show{display:block}
+.pdf-ph{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.pdf-title{font-size:11px;font-family:var(--mono);color:var(--text2);text-transform:uppercase;letter-spacing:.05em}
+textarea.ptxt{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:var(--mono);font-size:11px;padding:7px 9px;resize:vertical;min-height:72px;outline:none;line-height:1.5}
+textarea.ptxt:focus{border-color:var(--accent)}
+
+/* TABLE */
+.twrap{padding:0 20px 24px;overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead th{background:var(--bg2);color:var(--text3);font-family:var(--mono);font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;padding:7px 9px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;position:sticky;top:50px;z-index:10;cursor:pointer;user-select:none}
+thead th:hover{color:var(--text2)}
+thead th.sorted{color:var(--accent)}
+tbody tr{border-bottom:1px solid var(--border);transition:background .1s}
+tbody tr:hover{background:var(--bg2)}
+tbody tr.oos td{opacity:.5}
+td{padding:7px 9px;vertical-align:middle}
+
+/* GROUP ROW */
+.grow td{background:var(--bg3);color:var(--text2);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;font-family:var(--mono);padding:5px 9px;border-top:1px solid var(--border);cursor:pointer;user-select:none}
+.grow td::before{content:'▾ '}
+.grow.collapsed td::before{content:'▸ '}
+
+/* CELLS */
+.drag-h{cursor:grab;color:var(--text3);padding:0 3px;user-select:none;font-size:15px}
+.drag-h:active{cursor:grabbing}
+.pname{font-weight:500;max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pcode{font-family:var(--mono);font-size:10px;color:var(--text3);margin-top:1px}
+.catpill{display:inline-block;background:var(--bg3);border:1px solid var(--border);border-radius:3px;padding:1px 6px;font-size:10px;color:var(--text2);font-family:var(--mono)}
+.stock{font-family:var(--mono);font-size:11px;font-weight:500}
+.stock.in{color:var(--green)}
+.stock.out{color:var(--text3)}
+.pcell{font-family:var(--mono);white-space:nowrap}
+.muted{color:var(--text3)}
+
+/* PRICE EDIT */
+.pedit{display:flex;align-items:center;gap:3px}
+input.pinput{background:transparent;border:none;color:var(--text);font-family:var(--mono);font-size:12px;width:76px;padding:2px 3px;border-radius:3px;outline:none;text-align:right;cursor:text}
+input.pinput:hover{background:var(--bg3)}
+input.pinput:focus{background:var(--bg3);border:1px solid var(--accent)}
+.savebtn{background:var(--green);color:#000;border:none;border-radius:3px;padding:2px 7px;font-size:10px;font-weight:600;cursor:pointer;display:none;font-family:var(--mono)}
+input.pinput.changed + .savebtn{display:inline-block}
+
+/* MARKUP */
+.mk{font-family:var(--mono);font-size:12px;font-weight:600;white-space:nowrap}
+.mk.good{color:var(--green)}
+.mk.ok{color:var(--yellow)}
+.mk.bad{color:var(--red)}
+
+/* DELTA */
+.delta{font-size:10px;font-family:var(--mono);white-space:nowrap}
+.delta.up{color:var(--green)}
+.delta.dn{color:var(--red)}
+.delta.n{color:var(--text3)}
+
+/* COMPETITOR */
+.comp{display:flex;flex-direction:column;gap:1px}
+.comp-p{font-family:var(--mono);font-size:11px;color:var(--text2)}
+.comp-d{font-size:10px;font-family:var(--mono)}
+.comp-d.cheap{color:var(--red)}
+.comp-d.exp{color:var(--green)}
+.comp-d.eq{color:var(--text3)}
+
+.actbtn{background:transparent;border:1px solid var(--border);border-radius:3px;color:var(--text3);font-size:11px;padding:2px 8px;cursor:pointer;transition:all .15s;font-family:var(--mono)}
+.actbtn:hover{border-color:var(--red);color:var(--red)}
+
+/* LOADING / EMPTY */
+.loading,.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 24px;gap:14px;color:var(--text2);font-family:var(--mono);font-size:12px}
+.spinner{width:30px;height:30px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty .ico{font-size:36px;opacity:.3}
+
+/* TOAST */
+.toasts{position:fixed;bottom:20px;right:20px;display:flex;flex-direction:column;gap:7px;z-index:999}
+.toast{background:var(--bg3);border:1px solid var(--border);border-radius:5px;padding:9px 14px;font-size:12px;min-width:240px;animation:tin .2s ease;font-family:var(--sans)}
+.toast.ok{border-left:3px solid var(--green)}
+.toast.err{border-left:3px solid var(--red)}
+.toast.info{border-left:3px solid var(--accent)}
+@keyframes tin{from{transform:translateX(40px);opacity:0}to{transform:translateX(0);opacity:1}}
+
+/* MODAL */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(2px)}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:22px;min-width:360px;max-width:460px}
+.modal h3{font-size:15px;margin-bottom:10px}
+.modal p{color:var(--text2);font-size:13px;line-height:1.6;margin-bottom:14px}
+.modal-a{display:flex;gap:8px;justify-content:flex-end}
+
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="hdr">
+  <div class="logo">▸ PRICE MONITOR</div>
+  <div class="vsep"></div>
+  <div class="status">
+    <span class="dot" id="dot"></span>
+    <span id="stxt">не подключено</span>
+  </div>
+  <div class="hdr-right">
+    <button class="btn sec sm" onclick="exportCSV()">↓ CSV</button>
+    <button class="btn sec sm" id="refreshBtn" style="display:none" onclick="loadData()">⟳ Обновить</button>
+    <button class="btn sm" onclick="loadData()">Загрузить</button>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <div class="tab active" id="tab-in" onclick="switchTab('in')">В наличии <span class="badge" id="b-in">0</span></div>
+  <div class="tab" id="tab-out" onclick="switchTab('out')">Нет на складе <span class="badge" id="b-out">0</span></div>
+</div>
+
+<!-- TOOLBAR -->
+<div class="toolbar">
+  <div class="search">
+    <span class="search-icon">⌕</span>
+    <input class="sinput" id="q" placeholder="Поиск..." oninput="render()">
+  </div>
+  <select class="sel" id="catf" onchange="render()">
+    <option value="">Все категории</option>
+  </select>
+  <div class="vsep"></div>
+  <label class="upload-btn">
+    📄 Прайс конкурента (файл)
+    <input type="file" accept=".txt,.csv,.pdf" style="display:none" onchange="loadCompFile(event)">
+  </label>
+  <button class="btn sec sm" onclick="togglePdf()">Вставить текст</button>
+</div>
+
+<!-- PDF PANEL -->
+<div class="pdf-panel" id="pdfPanel">
+  <div class="pdf-ph">
+    <span class="pdf-title">Прайс конкурента — название;цена (построчно)</span>
+    <button class="btn sm" onclick="parseComp()">Применить</button>
+  </div>
+  <textarea class="ptxt" id="ptxt" placeholder="Молоко 3.2%;89.90&#10;Кефир 1%;65.00&#10;&#10;Или вставьте любой текст из PDF — система найдёт совпадения автоматически"></textarea>
+</div>
+
+<!-- STATS -->
+<div class="stats" id="stats" style="display:none">
+  <div class="scard">
+    <div class="slabel">В наличии</div>
+    <div class="sval" id="s-in">—</div>
+    <div class="ssub">из <span id="s-total">—</span> активных</div>
+  </div>
+  <div class="scard">
+    <div class="slabel">Наценка (цена 1)</div>
+    <div class="sval" id="s-mk">—</div>
+    <div class="ssub">средняя по складу</div>
+  </div>
+  <div class="scard">
+    <div class="slabel">Факт. наценка</div>
+    <div class="sval" id="s-rmk">—</div>
+    <div class="ssub">по отгрузкам мес.</div>
+  </div>
+  <div class="scard">
+    <div class="slabel">Конкурент</div>
+    <div class="sval" id="s-comp">0</div>
+    <div class="ssub">совпадений найдено</div>
+  </div>
+</div>
+
+<!-- TABLE -->
+<div class="twrap">
+  <div class="loading" id="ldiv" style="display:none"><div class="spinner"></div><span>Загружаю данные...</span></div>
+  <div class="empty" id="ediv"><div class="ico">◈</div><span id="emsg">Нажмите «Загрузить» для подключения к МойСклад</span></div>
+  <table id="tbl" style="display:none">
+    <thead>
+      <tr>
+        <th style="width:20px"></th>
+        <th onclick="sortBy('name')" id="th-name">Товар ⇅</th>
+        <th onclick="sortBy('category')">Категория ⇅</th>
+        <th onclick="sortBy('stock')">Остаток ⇅</th>
+        <th onclick="sortBy('costPrice')">Себест. ⇅</th>
+        <th id="th-p0" onclick="sortBy('p0')">Цена 1 ⇅</th>
+        <th id="th-p1" onclick="sortBy('p1')" style="display:none">Цена 2 ⇅</th>
+        <th id="th-p2" onclick="sortBy('p2')" style="display:none">Цена 3 ⇅</th>
+        <th onclick="sortBy('markup0')">Наценка % ⇅</th>
+        <th onclick="sortBy('realPrice')">Факт. цена ⇅</th>
+        <th onclick="sortBy('realMarkup')">Факт. % ⇅</th>
+        <th>Δ мес.</th>
+        <th>Конкурент</th>
+        <th style="width:50px"></th>
+      </tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+  </table>
+</div>
+
+<!-- TOASTS -->
+<div class="toasts" id="toasts"></div>
+
+<!-- MODAL -->
+<div class="overlay" id="modal" style="display:none">
+  <div class="modal">
+    <h3>Убрать в архив?</h3>
+    <p id="modal-txt"></p>
+    <div class="modal-a">
+      <button class="btn sec" onclick="closeModal()">Отмена</button>
+      <button class="btn danger" onclick="doArchive()">Убрать в архив</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── STATE ──────────────────────────────────────────
+const API = ''; // empty = same origin (Railway)
+let products = [];
+let priceTypes = [];
+let rowOrder = [];
+let compPrices = {};
+let tab = 'in';
+let sortF = 'name', sortA = true;
+let archiveId = null;
+let collapsed = new Set();
+let settings = { rowOrder:[], competitorPrices:{}, collapsedGroups:[] };
+
+// ── INIT ───────────────────────────────────────────
+async function init() {
+  try {
+    const r = await fetch(API + '/api/settings');
+    if (r.ok) {
+      settings = await r.json();
+      rowOrder = settings.rowOrder || [];
+      compPrices = settings.competitorPrices || {};
+      collapsed = new Set(settings.collapsedGroups || []);
+      if (Object.keys(compPrices).length > 0) {
+        document.getElementById('s-comp').textContent = Object.keys(compPrices).length;
+      }
+    }
+  } catch(e) {}
+}
+init();
+
+// ── LOAD DATA ──────────────────────────────────────
+async function loadData() {
+  setStatus('spin','загрузка...');
+  document.getElementById('ldiv').style.display='flex';
+  document.getElementById('ediv').style.display='none';
+  document.getElementById('tbl').style.display='none';
+  document.getElementById('stats').style.display='none';
+
+  try {
+    const r = await fetch(API + '/api/data');
+    if (!r.ok) {
+      const e = await r.json().catch(()=>({}));
+      throw new Error(e.error || 'HTTP ' + r.status);
+    }
+    const data = await r.json();
+    products = data.products || [];
+    priceTypes = data.priceTypes || [];
+
+    // Update price type column headers
+    priceTypes.forEach((pt, i) => {
+      const th = document.getElementById(`th-p${i}`);
+      if (th) { th.firstChild.textContent = pt.name + ' ⇅'; th.style.display=''; }
+    });
+    for (let i = priceTypes.length; i < 3; i++) {
+      const th = document.getElementById(`th-p${i}`);
+      if (th) th.style.display='none';
+    }
+
+    // Merge rowOrder: keep saved order, append new
+    const existing = new Set(rowOrder);
+    const newIds = products.map(p=>p.id).filter(id=>!existing.has(id));
+    rowOrder = [...rowOrder.filter(id=>products.find(p=>p.id===id)), ...newIds];
+
+    // Category filter
+    const cats = [...new Set(products.map(p=>p.category))].sort();
+    const cf = document.getElementById('catf');
+    cf.innerHTML = '<option value="">Все категории</option>';
+    cats.forEach(c => { const o=document.createElement('option'); o.value=c; o.textContent=c; cf.appendChild(o); });
+
+    setStatus('ok', `${products.length} товаров · обновлено ${new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})}`);
+    document.getElementById('ldiv').style.display='none';
+    document.getElementById('stats').style.display='flex';
+    document.getElementById('refreshBtn').style.display='';
+    updateStats();
+    render();
+    toast(`Загружено ${products.length} товаров`, 'ok');
+  } catch(e) {
+    setStatus('err','ошибка');
+    document.getElementById('ldiv').style.display='none';
+    document.getElementById('ediv').style.display='flex';
+    document.getElementById('emsg').textContent = 'Ошибка: ' + e.message;
+    toast('Ошибка: ' + e.message, 'err');
+  }
+}
+
+// ── RENDER ─────────────────────────────────────────
+function render() {
+  const q = document.getElementById('q').value.toLowerCase();
+  const cat = document.getElementById('catf').value;
+  const inStock = tab === 'in';
+
+  let filtered = products.filter(p => {
+    if (p.archived) return false;
+    if (inStock && p.stock <= 0) return false;
+    if (!inStock && p.stock > 0) return false;
+    if (q && !p.name.toLowerCase().includes(q) && !p.code.toLowerCase().includes(q)) return false;
+    if (cat && p.category !== cat) return false;
+    return true;
+  });
+
+  // Apply row order
+  const om = {};
+  rowOrder.forEach((id,i) => om[id]=i);
+  filtered.sort((a,b) => (om[a.id]??9999)-(om[b.id]??9999));
+
+  // Group
+  const groups = {};
+  filtered.forEach(p => { if(!groups[p.category]) groups[p.category]=[]; groups[p.category].push(p); });
+
+  const tbody = document.getElementById('tbody');
+  tbody.innerHTML = '';
+
+  if (filtered.length === 0) {
+    document.getElementById('tbl').style.display='none';
+    document.getElementById('ediv').style.display='flex';
+    document.getElementById('emsg').textContent = products.length === 0
+      ? 'Нет данных. Нажмите «Загрузить».' : 'Нет товаров по фильтру.';
+    return;
+  }
+
+  document.getElementById('tbl').style.display='';
+  document.getElementById('ediv').style.display='none';
+
+  Object.entries(groups).forEach(([cat, items]) => {
+    const gtr = document.createElement('tr');
+    gtr.className = 'grow' + (collapsed.has(cat) ? ' collapsed' : '');
+    gtr.innerHTML = `<td colspan="14">${esc(cat)} <span style="color:var(--text3);font-size:10px">(${items.length})</span></td>`;
+    gtr.onclick = () => toggleGroup(cat);
+    tbody.appendChild(gtr);
+
+    if (!collapsed.has(cat)) {
+      items.forEach(p => tbody.appendChild(buildRow(p)));
+    }
+  });
+
+  initDrag();
+}
+
+function buildRow(p) {
+  const tr = document.createElement('tr');
+  tr.dataset.id = p.id;
+  if (p.stock <= 0) tr.classList.add('oos');
+  tr.draggable = true;
+
+  const mkC = p.markup0===null?'':p.markup0>=30?'good':p.markup0>=15?'ok':'bad';
+  const rmkC = p.realMarkup===null?'':p.realMarkup>=30?'good':p.realMarkup>=15?'ok':'bad';
+
+  // Delta
+  let deltaH = '<span class="delta n">—</span>';
+  if (p.markupDelta !== null) {
+    const sign = p.markupDelta > 0 ? '+' : '';
+    const cls = p.markupDelta > 0 ? 'up' : p.markupDelta < 0 ? 'dn' : 'n';
+    const reason = p.deltaReason ? ` <span style="opacity:.6;font-size:9px">(${esc(p.deltaReason)})</span>` : '';
+    deltaH = `<span class="delta ${cls}">${sign}${p.markupDelta}%${reason}</span>`;
+  }
+
+  // Competitor
+  let compH = '<span class="muted" style="font-size:11px;font-family:var(--mono)">—</span>';
+  const cm = findComp(p.name);
+  if (cm !== null) {
+    const diff = p.prices[0] > 0 ? Math.round((p.prices[0]-cm)/cm*100) : null;
+    const dc = diff===null?'':diff<-5?'cheap':diff>5?'exp':'eq';
+    const dt = diff===null?'':diff>0?`+${diff}% дороже`:diff<0?`${diff}% дешевле`:'≈ равно';
+    compH = `<div class="comp"><span class="comp-p">${fmt(cm)}</span>${diff!==null?`<span class="comp-d ${dc}">${dt}</span>`:''}</div>`;
+  }
+
+  // Price cells
+  let pCells = '';
+  for (let i = 0; i < 3; i++) {
+    const show = i < priceTypes.length;
+    const ptId = priceTypes[i]?.id || '';
+    pCells += `<td style="${show?'':'display:none'}">
+      <div class="pedit">
+        <input class="pinput" data-id="${p.id}" data-pidx="${i}" data-ptid="${ptId}"
+          value="${p.prices[i]>0 ? p.prices[i].toFixed(2) : ''}"
+          placeholder="—" oninput="markChanged(this)" onkeydown="keyPrice(event,this)">
+        <button class="savebtn" onclick="savePrice(this)">✓</button>
+      </div>
+    </td>`;
+  }
+
+  tr.innerHTML = `
+    <td><span class="drag-h">⠿</span></td>
+    <td>
+      <div class="pname" title="${esc(p.name)}">${esc(p.name)}</div>
+      ${p.code?`<div class="pcode">${esc(p.code)}</div>`:''}
+    </td>
+    <td><span class="catpill">${esc(p.category)}</span></td>
+    <td><span class="stock ${p.stock>0?'in':'out'}">${p.stock>0?'● '+p.stock:'○ 0'}</span></td>
+    <td class="pcell">${p.costPrice>0?fmt(p.costPrice):'<span class="muted">—</span>'}</td>
+    ${pCells}
+    <td class="mk ${mkC}">${p.markup0!==null?p.markup0+'%':'—'}</td>
+    <td class="pcell">${p.realPrice?fmt(p.realPrice):'<span class="muted">—</span>'}</td>
+    <td class="mk ${rmkC}">${p.realMarkup!==null?p.realMarkup+'%':'—'}</td>
+    <td>${deltaH}</td>
+    <td>${compH}</td>
+    <td><button class="actbtn" onclick="archiveModal('${p.id}','${esc(p.name)}')">архив</button></td>
+  `;
+  return tr;
+}
+
+// ── PRICE EDITING ──────────────────────────────────
+function markChanged(inp) { inp.classList.add('changed'); }
+function keyPrice(e, inp) { if (e.key==='Enter') { e.preventDefault(); inp.nextElementSibling.click(); } }
+
+async function savePrice(btn) {
+  const inp = btn.previousElementSibling;
+  const productId = inp.dataset.id;
+  const priceTypeId = inp.dataset.ptid;
+  const val = parseFloat(inp.value);
+  if (isNaN(val) || val < 0) { toast('Некорректная цена','err'); return; }
+
+  btn.textContent='...'; btn.disabled=true;
+  try {
+    const r = await fetch(API+'/api/price', {
+      method:'PUT',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ productId, priceTypeId, value: val })
+    });
+    if (!r.ok) { const e=await r.json(); throw new Error(e.error||'Ошибка'); }
+
+    const p = products.find(x=>x.id===productId);
+    const idx = parseInt(inp.dataset.pidx);
+    if (p) {
+      p.prices[idx] = val;
+      if (idx===0 && p.costPrice>0) p.markup0 = Math.round((val-p.costPrice)/p.costPrice*100);
+    }
+    inp.classList.remove('changed');
+    btn.style.display='none';
+    btn.textContent='✓'; btn.disabled=false;
+    toast(`Цена сохранена → ${fmt(val)}`,'ok');
+    updateStats();
+  } catch(e) {
+    btn.textContent='✓'; btn.disabled=false;
+    toast('Ошибка: '+e.message,'err');
+  }
+}
+
+// ── ARCHIVE ────────────────────────────────────────
+function archiveModal(id, name) {
+  archiveId = id;
+  document.getElementById('modal-txt').textContent = `«${name}» будет помечен как архивный в МойСклад.`;
+  document.getElementById('modal').style.display='flex';
+}
+function closeModal() { document.getElementById('modal').style.display='none'; }
+async function doArchive() {
+  closeModal();
+  try {
+    const r = await fetch(API+'/api/archive', {
+      method:'PUT',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ productId: archiveId })
+    });
+    if (!r.ok) { const e=await r.json(); throw new Error(e.error||'Ошибка'); }
+    products = products.filter(p=>p.id!==archiveId);
+    rowOrder = rowOrder.filter(id=>id!==archiveId);
+    archiveId = null;
+    render(); updateStats();
+    toast('Товар убран в архив','ok');
+    saveSettings();
+  } catch(e) { toast('Ошибка: '+e.message,'err'); }
+}
+
+// ── DRAG & DROP ────────────────────────────────────
+function initDrag() {
+  const tbody = document.getElementById('tbody');
+  let dragId = null;
+  tbody.querySelectorAll('tr[data-id]').forEach(tr => {
+    tr.addEventListener('dragstart', e => { dragId=tr.dataset.id; e.dataTransfer.effectAllowed='move'; tr.style.opacity='.4'; });
+    tr.addEventListener('dragend', () => { tr.style.opacity=''; tbody.querySelectorAll('tr').forEach(r=>r.style.outline=''); });
+    tr.addEventListener('dragover', e => { e.preventDefault(); tbody.querySelectorAll('tr').forEach(r=>r.style.outline=''); tr.style.outline='1px solid var(--accent)'; });
+    tr.addEventListener('drop', e => {
+      e.preventDefault();
+      const tid = tr.dataset.id;
+      if (!tid || dragId===tid) return;
+      const fi=rowOrder.indexOf(dragId), ti=rowOrder.indexOf(tid);
+      if (fi===-1||ti===-1) return;
+      rowOrder.splice(fi,1); rowOrder.splice(ti,0,dragId);
+      saveSettings();
+      render();
+    });
+  });
+}
+
+function toggleGroup(cat) {
+  if (collapsed.has(cat)) collapsed.delete(cat); else collapsed.add(cat);
+  render();
+  saveSettings();
+}
+
+// ── COMPETITOR ─────────────────────────────────────
+function loadCompFile(e) {
+  const f = e.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = ev => { document.getElementById('ptxt').value=ev.target.result; document.getElementById('pdfPanel').classList.add('show'); parseComp(); };
+  r.readAsText(f);
+}
+function togglePdf() { document.getElementById('pdfPanel').classList.toggle('show'); }
+
+function parseComp() {
+  const lines = document.getElementById('ptxt').value.split('\n');
+  compPrices = {};
+  lines.forEach(line => {
+    line = line.trim(); if (!line) return;
+    let parts = null;
+    for (const sep of [';','\t',',','|']) {
+      const sp = line.split(sep);
+      if (sp.length>=2) { parts=sp; break; }
+    }
+    if (parts) {
+      const name = parts.slice(0,parts.length-1).join(' ').trim();
+      const price = parseFloat(parts[parts.length-1].replace(/[^\d.,]/g,'').replace(',','.'));
+      if (!isNaN(price) && price>0 && name.length>1) compPrices[name.toLowerCase()]=price;
+    } else {
+      const m = line.match(/^(.+?)\s+([\d]{1,6}[.,]\d{0,2})\s*$/);
+      if (m) { const price=parseFloat(m[2].replace(',','.')); if(!isNaN(price)&&price>0) compPrices[m[1].toLowerCase().trim()]=price; }
+    }
+  });
+  const cnt = Object.keys(compPrices).length;
+  document.getElementById('s-comp').textContent = cnt;
+  render();
+  toast(`Конкурент: ${cnt} позиций`, cnt>0?'ok':'info');
+  saveSettings();
+}
+
+function findComp(name) {
+  const lo = name.toLowerCase();
+  if (compPrices[lo]) return compPrices[lo];
+  for (const [k,v] of Object.entries(compPrices)) {
+    if (lo.includes(k)||k.includes(lo)) return v;
+    const ow=lo.split(/\s+/).filter(w=>w.length>3);
+    const tw=k.split(/\s+/).filter(w=>w.length>3);
+    if (ow.filter(w=>tw.some(t=>t.includes(w)||w.includes(t))).length>=2) return v;
+  }
+  return null;
+}
+
+// ── SETTINGS PERSIST ───────────────────────────────
+async function saveSettings() {
+  try {
+    await fetch(API+'/api/settings', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ rowOrder, competitorPrices: compPrices, collapsedGroups:[...collapsed] })
+    });
+  } catch(e) {}
+}
+
+// ── SORT ───────────────────────────────────────────
+function sortBy(f) {
+  if (sortF===f) sortA=!sortA; else { sortF=f; sortA=true; }
+  const inStock = tab==='in';
+  const filtered = products.filter(p=>!p.archived&&(inStock?p.stock>0:p.stock<=0));
+  filtered.sort((a,b)=>{
+    let va=a[f], vb=b[f];
+    // handle p0/p1/p2
+    if (f==='p0') { va=a.prices[0]; vb=b.prices[0]; }
+    if (f==='p1') { va=a.prices[1]; vb=b.prices[1]; }
+    if (f==='p2') { va=a.prices[2]; vb=b.prices[2]; }
+    if (va===null||va===undefined) va=sortA?Infinity:-Infinity;
+    if (vb===null||vb===undefined) vb=sortA?Infinity:-Infinity;
+    if (typeof va==='string') return sortA?va.localeCompare(vb,'ru'):vb.localeCompare(va,'ru');
+    return sortA?va-vb:vb-va;
+  });
+  rowOrder=[...filtered.map(p=>p.id),...rowOrder.filter(id=>!filtered.find(p=>p.id===id))];
+  render();
+}
+
+// ── TABS ───────────────────────────────────────────
+function switchTab(t) {
+  tab=t;
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  document.getElementById('tab-'+t).classList.add('active');
+  render();
+}
+
+// ── STATS ──────────────────────────────────────────
+function updateStats() {
+  const active = products.filter(p=>!p.archived);
+  const inS = active.filter(p=>p.stock>0);
+  document.getElementById('s-in').textContent = inS.length;
+  document.getElementById('s-total').textContent = active.length;
+  document.getElementById('b-in').textContent = inS.length;
+  document.getElementById('b-out').textContent = active.filter(p=>p.stock<=0).length;
+
+  const mks = inS.filter(p=>p.markup0!==null).map(p=>p.markup0);
+  document.getElementById('s-mk').textContent = mks.length ? Math.round(mks.reduce((a,b)=>a+b,0)/mks.length)+'%' : '—';
+
+  const rmks = inS.filter(p=>p.realMarkup!==null).map(p=>p.realMarkup);
+  document.getElementById('s-rmk').textContent = rmks.length ? Math.round(rmks.reduce((a,b)=>a+b,0)/rmks.length)+'%' : '—';
+}
+
+// ── EXPORT ─────────────────────────────────────────
+function exportCSV() {
+  const hdrs = ['Товар','Код','Категория','Остаток','Себестоимость',
+    ...priceTypes.map(pt=>pt.name),'Наценка %','Факт. цена','Факт. %','Δ мес.','Конкурент'];
+  const rows = products.filter(p=>!p.archived).map(p=>[
+    p.name,p.code,p.category,p.stock,p.costPrice,
+    ...p.prices.slice(0,priceTypes.length),
+    p.markup0??'',p.realPrice??'',p.realMarkup??'',p.markupDelta??'',
+    findComp(p.name)??''
+  ]);
+  const csv=[hdrs,...rows].map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(';')).join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}));
+  a.download=`monitor-${new Date().toISOString().split('T')[0]}.csv`;
+  a.click();
+  toast('CSV экспортирован','ok');
+}
+
+// ── HELPERS ────────────────────────────────────────
+function setStatus(state, txt) {
+  document.getElementById('dot').className='dot '+state;
+  document.getElementById('stxt').textContent=txt;
+}
+function toast(msg, type='info') {
+  const c=document.getElementById('toasts');
+  const el=document.createElement('div');
+  el.className=`toast ${type}`; el.textContent=msg;
+  c.appendChild(el);
+  setTimeout(()=>{ el.style.opacity='0'; el.style.transition='opacity .4s'; setTimeout(()=>el.remove(),400); },3000);
+}
+function fmt(n) {
+  if (n===null||n===undefined) return '—';
+  return new Intl.NumberFormat('ru-RU',{minimumFractionDigits:2,maximumFractionDigits:2}).format(n)+' ₽';
+}
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+</script>
+</body>
+</html>

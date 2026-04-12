@@ -1,0 +1,8 @@
+{
+  "name": "price-monitor",
+  "version": "1.0.0",
+  "description": "Монитор ассортимента и цен — МойСклад",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" },
+  "engines": { "node": ">=16" }
+}
