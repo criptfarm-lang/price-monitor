@@ -1,0 +1,1494 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Монитор ассортимента и цен</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f1117;
+    --bg2: #161920;
+    --bg3: #1e2230;
+    --border: #2a2f3f;
+    --text: #e8eaf0;
+    --text2: #8892a4;
+    --text3: #4a5568;
+    --accent: #4f8ef7;
+    --accent2: #7c5cbf;
+    --green: #34d399;
+    --red: #f87171;
+    --yellow: #fbbf24;
+    --orange: #fb923c;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'IBM Plex Sans', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 13px;
+    min-height: 100vh;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    height: 52px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .logo {
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+  }
+
+  .header-sep { width: 1px; height: 28px; background: var(--border); }
+
+  .token-area {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    max-width: 420px;
+  }
+
+  .token-area label { color: var(--text2); font-size: 11px; white-space: nowrap; font-family: var(--mono); }
+
+  .token-input {
+    flex: 1;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 5px 8px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .token-input:focus { border-color: var(--accent); }
+
+  .btn {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 6px 14px;
+    font-family: var(--sans);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+    white-space: nowrap;
+  }
+  .btn:hover { opacity: 0.85; }
+  .btn:active { transform: scale(0.97); }
+  .btn.secondary { background: var(--bg3); border: 1px solid var(--border); color: var(--text2); }
+  .btn.secondary:hover { border-color: var(--accent); color: var(--accent); }
+  .btn.danger { background: transparent; border: 1px solid var(--red); color: var(--red); }
+  .btn.small { padding: 4px 10px; font-size: 11px; }
+
+  .header-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+
+  .status-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--text3);
+    display: inline-block;
+    margin-right: 6px;
+  }
+  .status-dot.ok { background: var(--green); box-shadow: 0 0 6px var(--green); }
+  .status-dot.err { background: var(--red); }
+  .status-dot.loading { background: var(--yellow); animation: pulse 1s infinite; }
+
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  /* ── TABS ── */
+  .tabs {
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    display: flex;
+    gap: 0;
+  }
+
+  .tab {
+    padding: 10px 18px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text2);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: color 0.15s, border-color 0.15s;
+    user-select: none;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .tab-badge {
+    display: inline-block;
+    background: var(--bg3);
+    border-radius: 10px;
+    padding: 1px 7px;
+    font-size: 10px;
+    margin-left: 6px;
+    font-family: var(--mono);
+  }
+  .tab.active .tab-badge { background: rgba(79,142,247,0.2); color: var(--accent); }
+
+  /* ── TOOLBAR ── */
+  .toolbar {
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .search-wrap {
+    position: relative;
+    flex: 1;
+    min-width: 200px;
+    max-width: 320px;
+  }
+  .search-icon {
+    position: absolute; left: 9px; top: 50%; transform: translateY(-50%);
+    color: var(--text3); font-size: 13px; pointer-events: none;
+  }
+  .search-input {
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-size: 12px;
+    padding: 6px 8px 6px 28px;
+    outline: none;
+    transition: border-color 0.15s;
+    font-family: var(--sans);
+  }
+  .search-input:focus { border-color: var(--accent); }
+  .search-input::placeholder { color: var(--text3); }
+
+  .select-filter {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-size: 12px;
+    padding: 6px 10px;
+    outline: none;
+    font-family: var(--sans);
+    cursor: pointer;
+  }
+  .select-filter:focus { border-color: var(--accent); }
+
+  .toolbar-sep { width: 1px; height: 24px; background: var(--border); }
+
+  .pdf-upload-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--bg3);
+    border: 1px dashed var(--border);
+    border-radius: 4px;
+    color: var(--text2);
+    font-size: 12px;
+    padding: 5px 12px;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+    font-family: var(--sans);
+    font-weight: 400;
+  }
+  .pdf-upload-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── STATS ROW ── */
+  .stats-row {
+    display: flex;
+    gap: 12px;
+    padding: 14px 24px;
+    flex-wrap: wrap;
+  }
+
+  .stat-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 16px;
+    min-width: 140px;
+    flex: 1;
+    max-width: 200px;
+  }
+
+  .stat-label {
+    font-size: 10px;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-family: var(--mono);
+    margin-bottom: 4px;
+  }
+
+  .stat-value {
+    font-size: 22px;
+    font-weight: 600;
+    font-family: var(--mono);
+    color: var(--text);
+    line-height: 1;
+  }
+
+  .stat-sub {
+    font-size: 10px;
+    color: var(--text2);
+    margin-top: 3px;
+  }
+
+  /* ── TABLE ── */
+  .table-wrap {
+    padding: 0 24px 24px;
+    overflow-x: auto;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+
+  thead th {
+    background: var(--bg2);
+    color: var(--text3);
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 8px 10px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+    position: sticky;
+    top: 52px;
+    z-index: 10;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  thead th:hover { color: var(--text2); }
+  thead th.sorted { color: var(--accent); }
+
+  thead th .sort-icon { margin-left: 4px; opacity: 0.5; }
+  thead th.sorted .sort-icon { opacity: 1; }
+
+  tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.1s;
+  }
+  tbody tr:hover { background: var(--bg2); }
+  tbody tr.dragging { opacity: 0.5; background: var(--bg3); }
+  tbody tr.drag-over { border-top: 2px solid var(--accent); }
+  tbody tr.out-of-stock td { opacity: 0.55; }
+
+  td {
+    padding: 8px 10px;
+    vertical-align: middle;
+  }
+
+  .drag-handle {
+    cursor: grab;
+    color: var(--text3);
+    font-size: 14px;
+    padding: 0 4px;
+    user-select: none;
+  }
+  .drag-handle:active { cursor: grabbing; }
+
+  .product-name {
+    font-weight: 500;
+    color: var(--text);
+    max-width: 220px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .product-code {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text3);
+    margin-top: 2px;
+  }
+
+  .category-pill {
+    display: inline-block;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 2px 7px;
+    font-size: 10px;
+    color: var(--text2);
+    white-space: nowrap;
+    font-family: var(--mono);
+  }
+
+  .stock-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+  }
+  .stock-badge.in { color: var(--green); }
+  .stock-badge.out { color: var(--text3); }
+
+  .price-cell {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text);
+    white-space: nowrap;
+  }
+
+  .price-edit-wrap {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .price-input {
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+    width: 80px;
+    padding: 2px 4px;
+    border-radius: 3px;
+    outline: none;
+    text-align: right;
+    cursor: text;
+  }
+  .price-input:hover { background: var(--bg3); }
+  .price-input:focus { background: var(--bg3); border: 1px solid var(--accent); }
+
+  .save-price-btn {
+    background: var(--green);
+    color: #000;
+    border: none;
+    border-radius: 3px;
+    padding: 2px 7px;
+    font-size: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    display: none;
+    font-family: var(--mono);
+  }
+  .price-input:focus + .save-price-btn,
+  .save-price-btn:focus { display: inline-block; }
+  .price-input-changed + .save-price-btn { display: inline-block; }
+
+  .markup-cell {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .markup-cell.good { color: var(--green); }
+  .markup-cell.ok { color: var(--yellow); }
+  .markup-cell.bad { color: var(--red); }
+
+  .delta {
+    font-size: 10px;
+    font-family: var(--mono);
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    white-space: nowrap;
+  }
+  .delta.up { color: var(--green); }
+  .delta.down { color: var(--red); }
+  .delta.neutral { color: var(--text3); }
+
+  .competitor-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .comp-price {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text2);
+  }
+  .comp-diff {
+    font-size: 10px;
+    font-family: var(--mono);
+  }
+  .comp-diff.cheaper { color: var(--red); }
+  .comp-diff.expensive { color: var(--green); }
+  .comp-diff.equal { color: var(--text3); }
+
+  .action-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    color: var(--text3);
+    font-size: 11px;
+    padding: 3px 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: var(--mono);
+  }
+  .action-btn:hover { border-color: var(--red); color: var(--red); }
+
+  /* ── GROUP ROW ── */
+  .group-row td {
+    background: var(--bg3);
+    color: var(--text2);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-family: var(--mono);
+    padding: 6px 10px;
+    border-top: 1px solid var(--border);
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .group-row td:first-child::before {
+    content: '▾ ';
+    font-size: 10px;
+  }
+  .group-row.collapsed td:first-child::before { content: '▸ '; }
+
+  /* ── LOADING / EMPTY ── */
+  .loading-overlay {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 80px 24px;
+    gap: 16px;
+    color: var(--text2);
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+
+  .spinner {
+    width: 32px; height: 32px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 80px 24px;
+    gap: 12px;
+    color: var(--text3);
+    font-size: 13px;
+  }
+  .empty-state .icon { font-size: 40px; opacity: 0.4; }
+
+  /* ── TOAST ── */
+  .toast-container {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 999;
+  }
+
+  .toast {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 16px;
+    font-size: 12px;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 260px;
+    animation: slideIn 0.2s ease;
+    font-family: var(--sans);
+  }
+  .toast.ok { border-left: 3px solid var(--green); }
+  .toast.err { border-left: 3px solid var(--red); }
+  .toast.info { border-left: 3px solid var(--accent); }
+
+  @keyframes slideIn { from { transform: translateX(40px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(2px);
+  }
+
+  .modal {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px;
+    min-width: 380px;
+    max-width: 500px;
+  }
+
+  .modal h3 { font-size: 15px; margin-bottom: 12px; color: var(--text); }
+  .modal p { color: var(--text2); font-size: 13px; line-height: 1.6; margin-bottom: 16px; }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+  /* ── PDF PANEL ── */
+  .pdf-panel {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    margin: 0 24px 16px;
+    padding: 12px 16px;
+    display: none;
+  }
+  .pdf-panel.visible { display: block; }
+  .pdf-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .pdf-panel-title {
+    font-size: 11px;
+    font-family: var(--mono);
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  textarea.pdf-text {
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 8px 10px;
+    resize: vertical;
+    min-height: 80px;
+    outline: none;
+    line-height: 1.5;
+  }
+  textarea.pdf-text:focus { border-color: var(--accent); }
+
+  .hidden { display: none !important; }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text3); }
+
+  /* drag-over line */
+  tr.drop-target { outline: 2px solid var(--accent); }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="logo">▸ PRICE MONITOR</div>
+  <div class="header-sep"></div>
+  <div class="token-area">
+    <label>TOKEN</label>
+    <input class="token-input" id="tokenInput" type="password" placeholder="МойСклад Bearer токен" autocomplete="off">
+    <button class="btn" onclick="loadData()">Загрузить</button>
+  </div>
+  <div class="header-sep"></div>
+  <span id="statusLine" style="font-size:11px;color:var(--text3);font-family:var(--mono)">
+    <span class="status-dot" id="statusDot"></span><span id="statusText">не подключено</span>
+  </span>
+  <div class="header-actions">
+    <button class="btn secondary small" onclick="exportCSV()">↓ CSV</button>
+    <button class="btn secondary small" onclick="refreshData()" id="refreshBtn" style="display:none">⟳ Обновить</button>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('instock')" id="tab-instock">
+    В наличии <span class="tab-badge" id="badge-instock">0</span>
+  </div>
+  <div class="tab" onclick="switchTab('outofstock')" id="tab-outofstock">
+    Нет на складе <span class="tab-badge" id="badge-outofstock">0</span>
+  </div>
+</div>
+
+<!-- TOOLBAR -->
+<div class="toolbar">
+  <div class="search-wrap">
+    <span class="search-icon">⌕</span>
+    <input class="search-input" id="searchInput" placeholder="Поиск товара..." oninput="renderTable()">
+  </div>
+  <select class="select-filter" id="categoryFilter" onchange="renderTable()">
+    <option value="">Все категории</option>
+  </select>
+  <div class="toolbar-sep"></div>
+  <label class="pdf-upload-btn" for="pdfFileInput">
+    📄 Загрузить прайс конкурента
+    <input type="file" id="pdfFileInput" accept=".pdf,.txt,.csv" style="display:none" onchange="handleCompetitorFile(event)">
+  </label>
+  <button class="btn secondary small" onclick="togglePdfPanel()" id="pdfPasteBtn">Вставить текст прайса</button>
+</div>
+
+<!-- PDF PANEL -->
+<div class="pdf-panel" id="pdfPanel">
+  <div class="pdf-panel-header">
+    <span class="pdf-panel-title">Прайс конкурента — вставьте текст (построчно: название;цена)</span>
+    <button class="btn secondary small" onclick="parsePdfText()">Применить</button>
+  </div>
+  <textarea class="pdf-text" id="pdfText" placeholder="Пример:&#10;Молоко 3.2%;89.90&#10;Кефир 1%;65.00&#10;&#10;Или просто вставьте текст из PDF — система попробует найти совпадения автоматически"></textarea>
+</div>
+
+<!-- STATS -->
+<div class="stats-row" id="statsRow" style="display:none">
+  <div class="stat-card">
+    <div class="stat-label">Позиций в наличии</div>
+    <div class="stat-value" id="statInStock">—</div>
+    <div class="stat-sub">из <span id="statTotal">—</span> всего</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Ср. наценка (розница)</div>
+    <div class="stat-value" id="statAvgMarkup">—</div>
+    <div class="stat-sub" id="statMarkupDelta">vs прошлый месяц</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Реальная наценка</div>
+    <div class="stat-value" id="statRealMarkup">—</div>
+    <div class="stat-sub" id="statRealDelta">по факт. отгрузкам</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Позиций с конкурентом</div>
+    <div class="stat-value" id="statCompetitor">—</div>
+    <div class="stat-sub">совпадений найдено</div>
+  </div>
+</div>
+
+<!-- TABLE -->
+<div class="table-wrap">
+  <div id="loadingDiv" class="loading-overlay hidden">
+    <div class="spinner"></div>
+    <span>Загружаю данные из МойСклад...</span>
+  </div>
+  <div id="emptyDiv" class="empty-state">
+    <div class="icon">◈</div>
+    <span>Введите токен МойСклад и нажмите «Загрузить»</span>
+    <span style="font-size:11px;color:var(--text3)">Токен: Настройки → Пользователи → Токен</span>
+  </div>
+  <table id="mainTable" style="display:none">
+    <thead>
+      <tr>
+        <th style="width:24px"></th>
+        <th onclick="sortBy('name')" id="th-name">Товар <span class="sort-icon">⇅</span></th>
+        <th onclick="sortBy('category')" id="th-category">Категория <span class="sort-icon">⇅</span></th>
+        <th onclick="sortBy('stock')" id="th-stock">Остаток <span class="sort-icon">⇅</span></th>
+        <th onclick="sortBy('costPrice')" id="th-costPrice">Себест. <span class="sort-icon">⇅</span></th>
+        <th id="th-price0" onclick="sortBy('price0')">Цена 1 <span class="sort-icon">⇅</span></th>
+        <th id="th-price1" onclick="sortBy('price1')">Цена 2 <span class="sort-icon">⇅</span></th>
+        <th id="th-price2" onclick="sortBy('price2')">Цена 3 <span class="sort-icon">⇅</span></th>
+        <th onclick="sortBy('markup0')" id="th-markup0">Наценка % <span class="sort-icon">⇅</span></th>
+        <th onclick="sortBy('realPrice')" id="th-realPrice">Факт. цена <span class="sort-icon">⇅</span></th>
+        <th onclick="sortBy('realMarkup')" id="th-realMarkup">Факт. % <span class="sort-icon">⇅</span></th>
+        <th>Δ мес. <span style="font-size:9px;color:var(--text3)">%</span></th>
+        <th>Конкурент</th>
+        <th style="width:60px"></th>
+      </tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
+  </table>
+</div>
+
+<!-- TOAST CONTAINER -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- MODAL -->
+<div class="modal-overlay hidden" id="archiveModal">
+  <div class="modal">
+    <h3>Убрать в архив?</h3>
+    <p id="archiveModalText">Товар будет помечен как архивный в МойСклад. Это действие можно отменить в самой программе.</p>
+    <div class="modal-actions">
+      <button class="btn secondary" onclick="closeModal()">Отмена</button>
+      <button class="btn danger" onclick="confirmArchive()">Убрать в архив</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════
+let TOKEN = '';
+let products = [];       // enriched product objects
+let rowOrder = [];       // ids in display order (for drag)
+let currentTab = 'instock';
+let sortField = 'name';
+let sortAsc = true;
+let competitorPrices = {}; // name → price
+let priceTypeNames = [];
+let archiveTargetId = null;
+let prevMonthData = {};  // productId → {realPrice, markup}
+let dragSrcIndex = null;
+let collapsedGroups = new Set();
+
+const BASE = 'https://api.moysklad.ru/api/remap/1.2';
+
+// ═══════════════════════════════════════════════════
+//  API HELPERS
+// ═══════════════════════════════════════════════════
+async function api(path, opts = {}) {
+  const token = document.getElementById('tokenInput').value.trim();
+  if (!token) throw new Error('Нет токена');
+  const res = await fetch(BASE + path, {
+    ...opts,
+    headers: {
+      'Authorization': 'Bearer ' + token,
+      'Content-Type': 'application/json',
+      'Accept-Encoding': 'gzip',
+      ...(opts.headers || {})
+    }
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err.errors?.[0]?.error) || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+async function apiAll(path) {
+  // Paginate through all results
+  let offset = 0;
+  const limit = 100;
+  let all = [];
+  while (true) {
+    const sep = path.includes('?') ? '&' : '?';
+    const data = await api(`${path}${sep}limit=${limit}&offset=${offset}`);
+    const rows = data.rows || [];
+    all = all.concat(rows);
+    if (all.length >= (data.meta?.size || 0)) break;
+    offset += limit;
+    if (rows.length === 0) break;
+  }
+  return all;
+}
+
+// ═══════════════════════════════════════════════════
+//  LOAD DATA
+// ═══════════════════════════════════════════════════
+async function loadData() {
+  TOKEN = document.getElementById('tokenInput').value.trim();
+  if (!TOKEN) { toast('Введите токен', 'err'); return; }
+
+  setStatus('loading', 'загрузка...');
+  showLoading(true);
+
+  try {
+    // 1. Price types
+    const ptData = await api('/context/employee/settings');
+    // Get price types from assortment
+    const ptResp = await api('/entity/pricetype');
+    priceTypeNames = (ptResp.rows || []).map(p => p.name);
+    if (priceTypeNames.length === 0) priceTypeNames = ['Розница'];
+
+    // Update column headers
+    priceTypeNames.forEach((name, i) => {
+      const th = document.getElementById(`th-price${i}`);
+      if (th) { th.childNodes[0].textContent = name + ' '; th.style.display = ''; }
+    });
+    for (let i = priceTypeNames.length; i < 3; i++) {
+      const th = document.getElementById(`th-price${i}`);
+      if (th) th.style.display = 'none';
+    }
+    const th0 = document.getElementById('th-markup0');
+    if (th0) th0.childNodes[0].textContent = `Наценка (${priceTypeNames[0]}) `;
+
+    // 2. Products with stock
+    const assortment = await apiAll('/entity/assortment?type=product&fields=id,name,code,article,pathName,salePrices,buyPrice,archived,stock');
+
+    // 3. Product folders (categories)
+    const folders = await apiAll('/entity/productfolder');
+    const folderMap = {};
+    folders.forEach(f => { folderMap[f.id] = f.name; });
+
+    // 4. Actual sales this month
+    const now = new Date();
+    const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().split('T')[0];
+    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().split('T')[0];
+
+    // Sales report this month
+    let salesThis = {};
+    let salesLast = {};
+    try {
+      salesThis = await getSalesData(thisMonthStart, now.toISOString().split('T')[0]);
+      salesLast = await getSalesData(lastMonthStart, lastMonthEnd);
+    } catch(e) {
+      console.warn('Sales data error:', e);
+    }
+
+    // 5. Build products array
+    products = assortment.map(p => {
+      const stock = typeof p.stock === 'number' ? p.stock : 0;
+      const costPrice = p.buyPrice ? p.buyPrice.value / 100 : 0;
+
+      const prices = [];
+      if (p.salePrices && p.salePrices.length > 0) {
+        for (let i = 0; i < 3; i++) {
+          prices.push(p.salePrices[i] ? p.salePrices[i].value / 100 : 0);
+        }
+      } else {
+        prices.push(0, 0, 0);
+      }
+
+      const markup0 = (prices[0] > 0 && costPrice > 0)
+        ? Math.round((prices[0] - costPrice) / costPrice * 100)
+        : null;
+
+      const sale = salesThis[p.id];
+      const saleLast = salesLast[p.id];
+
+      const realPrice = sale ? sale.avgPrice : null;
+      const realMarkup = (realPrice && costPrice > 0)
+        ? Math.round((realPrice - costPrice) / costPrice * 100)
+        : null;
+
+      const prevRealMarkup = (saleLast && costPrice > 0)
+        ? Math.round((saleLast.avgPrice - costPrice) / costPrice * 100)
+        : null;
+
+      const markupDelta = (realMarkup !== null && prevRealMarkup !== null)
+        ? realMarkup - prevRealMarkup
+        : null;
+
+      // Determine cause of change
+      let deltaReason = null;
+      if (markupDelta !== null && Math.abs(markupDelta) >= 1) {
+        const priceDiff = realPrice - (saleLast?.avgPrice || realPrice);
+        const costDiff = costPrice - (saleLast?.costPrice || costPrice);
+        if (Math.abs(priceDiff) > Math.abs(costDiff)) {
+          deltaReason = priceDiff < 0 ? 'цена ↓' : 'цена ↑';
+        } else {
+          deltaReason = costDiff > 0 ? 'себест ↑' : 'себест ↓';
+        }
+      }
+
+      const category = p.pathName || 'Без категории';
+
+      return {
+        id: p.id,
+        name: p.name,
+        code: p.code || p.article || '',
+        category,
+        stock,
+        costPrice,
+        prices,
+        markup0,
+        realPrice,
+        realMarkup,
+        markupDelta,
+        deltaReason,
+        archived: p.archived || false,
+        salePriceIds: p.salePrices ? p.salePrices.map(sp => sp.priceType?.id) : [],
+      };
+    });
+
+    rowOrder = products.map(p => p.id);
+
+    // Restore saved order if any
+    const savedOrder = localStorage.getItem('priceMonitorOrder');
+    if (savedOrder) {
+      try {
+        const ord = JSON.parse(savedOrder);
+        const existing = new Set(rowOrder);
+        const filtered = ord.filter(id => existing.has(id));
+        const missing = rowOrder.filter(id => !filtered.includes(id));
+        rowOrder = [...filtered, ...missing];
+      } catch(e) {}
+    }
+
+    // Fill category filter
+    const cats = [...new Set(products.map(p => p.category))].sort();
+    const catFilter = document.getElementById('categoryFilter');
+    catFilter.innerHTML = '<option value="">Все категории</option>';
+    cats.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c; opt.textContent = c;
+      catFilter.appendChild(opt);
+    });
+
+    setStatus('ok', `${products.length} товаров`);
+    showLoading(false);
+    document.getElementById('refreshBtn').style.display = '';
+    document.getElementById('statsRow').style.display = '';
+    updateStats();
+    renderTable();
+    toast(`Загружено ${products.length} товаров`, 'ok');
+
+  } catch(e) {
+    setStatus('err', 'ошибка');
+    showLoading(false);
+    document.getElementById('emptyDiv').classList.remove('hidden');
+    document.getElementById('emptyDiv').querySelector('span').textContent = 'Ошибка: ' + e.message;
+    toast('Ошибка загрузки: ' + e.message, 'err');
+    console.error(e);
+  }
+}
+
+async function getSalesData(dateFrom, dateTo) {
+  // Use demand (отгрузки) report
+  const result = {};
+  try {
+    const demands = await apiAll(`/entity/demand?filter=moment>${dateFrom} 00:00:00;moment<${dateTo} 23:59:59&expand=positions`);
+    for (const demand of demands) {
+      if (!demand.positions) continue;
+      const positions = demand.positions.rows || demand.positions || [];
+      for (const pos of positions) {
+        const productHref = pos.assortment?.meta?.href || '';
+        const id = productHref.split('/').pop();
+        if (!id) continue;
+        const price = pos.price ? pos.price / 100 : 0;
+        const qty = pos.quantity || 0;
+        if (!result[id]) result[id] = { totalRevenue: 0, totalQty: 0, avgPrice: 0 };
+        result[id].totalRevenue += price * qty;
+        result[id].totalQty += qty;
+      }
+    }
+    Object.keys(result).forEach(id => {
+      if (result[id].totalQty > 0) {
+        result[id].avgPrice = result[id].totalRevenue / result[id].totalQty;
+      }
+    });
+  } catch(e) {
+    console.warn('getSalesData error:', e);
+  }
+  return result;
+}
+
+function refreshData() { loadData(); }
+
+// ═══════════════════════════════════════════════════
+//  RENDER TABLE
+// ═══════════════════════════════════════════════════
+function renderTable() {
+  const search = document.getElementById('searchInput').value.toLowerCase();
+  const catFilter = document.getElementById('categoryFilter').value;
+
+  const inStock = currentTab === 'instock';
+
+  let filtered = products.filter(p => {
+    if (inStock && p.stock <= 0) return false;
+    if (!inStock && p.stock > 0) return false;
+    if (p.archived) return false;
+    if (search && !p.name.toLowerCase().includes(search) && !p.code.toLowerCase().includes(search)) return false;
+    if (catFilter && p.category !== catFilter) return false;
+    return true;
+  });
+
+  // Apply custom rowOrder
+  const orderMap = {};
+  rowOrder.forEach((id, i) => { orderMap[id] = i; });
+  filtered.sort((a, b) => (orderMap[a.id] ?? 9999) - (orderMap[b.id] ?? 9999));
+
+  // Group by category
+  const groups = {};
+  filtered.forEach(p => {
+    if (!groups[p.category]) groups[p.category] = [];
+    groups[p.category].push(p);
+  });
+
+  const tbody = document.getElementById('tableBody');
+  tbody.innerHTML = '';
+
+  if (filtered.length === 0) {
+    document.getElementById('mainTable').style.display = 'none';
+    document.getElementById('emptyDiv').classList.remove('hidden');
+    document.getElementById('emptyDiv').querySelector('span').textContent = products.length === 0
+      ? 'Нет данных. Загрузите токен.' : 'Нет товаров по выбранным фильтрам.';
+    return;
+  }
+
+  document.getElementById('mainTable').style.display = '';
+  document.getElementById('emptyDiv').classList.add('hidden');
+
+  let rowIdx = 0;
+  Object.entries(groups).forEach(([cat, items]) => {
+    // Group header row
+    const gtr = document.createElement('tr');
+    gtr.className = 'group-row' + (collapsedGroups.has(cat) ? ' collapsed' : '');
+    gtr.dataset.group = cat;
+    gtr.innerHTML = `<td colspan="14">${cat} <span style="color:var(--text3);font-size:10px">(${items.length})</span></td>`;
+    gtr.addEventListener('click', () => toggleGroup(cat));
+    tbody.appendChild(gtr);
+
+    if (!collapsedGroups.has(cat)) {
+      items.forEach(p => {
+        const tr = buildRow(p, rowIdx++);
+        tbody.appendChild(tr);
+      });
+    }
+  });
+
+  initDragDrop();
+}
+
+function buildRow(p, idx) {
+  const tr = document.createElement('tr');
+  tr.dataset.id = p.id;
+  if (p.stock <= 0) tr.classList.add('out-of-stock');
+  tr.draggable = true;
+
+  // Markup class
+  const mkClass = p.markup0 === null ? '' : p.markup0 >= 30 ? 'good' : p.markup0 >= 15 ? 'ok' : 'bad';
+  const rmkClass = p.realMarkup === null ? '' : p.realMarkup >= 30 ? 'good' : p.realMarkup >= 15 ? 'ok' : 'bad';
+
+  // Delta
+  let deltaHtml = '<span class="delta neutral">—</span>';
+  if (p.markupDelta !== null) {
+    const sign = p.markupDelta > 0 ? '+' : '';
+    const cls = p.markupDelta > 0 ? 'up' : p.markupDelta < 0 ? 'down' : 'neutral';
+    const reason = p.deltaReason ? ` <span style="opacity:0.6;font-size:9px">(${p.deltaReason})</span>` : '';
+    deltaHtml = `<span class="delta ${cls}">${sign}${p.markupDelta}%${reason}</span>`;
+  }
+
+  // Competitor
+  let compHtml = '<span style="color:var(--text3);font-size:11px;font-family:var(--mono)">—</span>';
+  const compMatch = findCompetitorMatch(p.name);
+  if (compMatch !== null) {
+    const diff = p.prices[0] > 0 ? Math.round((p.prices[0] - compMatch) / compMatch * 100) : null;
+    const diffClass = diff === null ? '' : diff < -5 ? 'cheaper' : diff > 5 ? 'expensive' : 'equal';
+    const diffText = diff === null ? '' : diff > 0 ? `+${diff}% дороже` : diff < 0 ? `${diff}% дешевле` : '≈ равно';
+    compHtml = `<div class="competitor-cell">
+      <span class="comp-price">${fmt(compMatch)}</span>
+      ${diff !== null ? `<span class="comp-diff ${diffClass}">${diffText}</span>` : ''}
+    </div>`;
+  }
+
+  // Prices cells
+  let pricesCells = '';
+  for (let i = 0; i < 3; i++) {
+    const show = i < priceTypeNames.length;
+    pricesCells += `<td style="${show ? '' : 'display:none'}">
+      <div class="price-edit-wrap">
+        <input class="price-input" data-id="${p.id}" data-pidx="${i}"
+          value="${p.prices[i] > 0 ? p.prices[i].toFixed(2) : ''}"
+          placeholder="—"
+          oninput="markPriceChanged(this)"
+          onblur="blurPrice(this)">
+        <button class="save-price-btn" onclick="savePrice(this)">✓</button>
+      </div>
+    </td>`;
+  }
+
+  tr.innerHTML = `
+    <td><span class="drag-handle" title="Перетащить">⠿</span></td>
+    <td>
+      <div class="product-name" title="${esc(p.name)}">${esc(p.name)}</div>
+      ${p.code ? `<div class="product-code">${esc(p.code)}</div>` : ''}
+    </td>
+    <td><span class="category-pill">${esc(p.category)}</span></td>
+    <td>
+      <span class="stock-badge ${p.stock > 0 ? 'in' : 'out'}">
+        ${p.stock > 0 ? '● ' + p.stock : '○ 0'}
+      </span>
+    </td>
+    <td class="price-cell">${p.costPrice > 0 ? fmt(p.costPrice) : '<span style="color:var(--text3)">—</span>'}</td>
+    ${pricesCells}
+    <td class="markup-cell ${mkClass}">${p.markup0 !== null ? p.markup0 + '%' : '—'}</td>
+    <td class="price-cell">${p.realPrice ? fmt(p.realPrice) : '<span style="color:var(--text3)">—</span>'}</td>
+    <td class="markup-cell ${rmkClass}">${p.realMarkup !== null ? p.realMarkup + '%' : '—'}</td>
+    <td>${deltaHtml}</td>
+    <td>${compHtml}</td>
+    <td><button class="action-btn" onclick="archiveProduct('${p.id}', '${esc(p.name)}')">архив</button></td>
+  `;
+  return tr;
+}
+
+// ═══════════════════════════════════════════════════
+//  PRICE EDITING
+// ═══════════════════════════════════════════════════
+function markPriceChanged(input) {
+  input.classList.add('price-input-changed');
+}
+
+function blurPrice(input) {
+  // keep save btn visible if changed
+}
+
+async function savePrice(btn) {
+  const input = btn.previousElementSibling;
+  const productId = input.dataset.id;
+  const priceIdx = parseInt(input.dataset.pidx);
+  const newPrice = parseFloat(input.value);
+
+  if (isNaN(newPrice) || newPrice < 0) {
+    toast('Некорректная цена', 'err');
+    return;
+  }
+
+  btn.textContent = '...';
+  btn.disabled = true;
+
+  try {
+    const token = document.getElementById('tokenInput').value.trim();
+
+    // Get current product to get all prices
+    const prod = products.find(p => p.id === productId);
+    if (!prod) throw new Error('Товар не найден');
+
+    // Get full product data
+    const fullProd = await api(`/entity/product/${productId}`);
+
+    // Update the specific price
+    const salePrices = fullProd.salePrices ? JSON.parse(JSON.stringify(fullProd.salePrices)) : [];
+    if (salePrices[priceIdx]) {
+      salePrices[priceIdx].value = Math.round(newPrice * 100);
+    } else {
+      // Add new price type
+      while (salePrices.length <= priceIdx) salePrices.push({ value: 0 });
+      salePrices[priceIdx].value = Math.round(newPrice * 100);
+    }
+
+    await api(`/entity/product/${productId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ salePrices })
+    });
+
+    // Update local state
+    prod.prices[priceIdx] = newPrice;
+    if (priceIdx === 0 && prod.costPrice > 0) {
+      prod.markup0 = Math.round((newPrice - prod.costPrice) / prod.costPrice * 100);
+    }
+
+    input.classList.remove('price-input-changed');
+    btn.style.display = 'none';
+    btn.textContent = '✓';
+    btn.disabled = false;
+
+    toast(`Цена обновлена → ${fmt(newPrice)}`, 'ok');
+    updateStats();
+
+  } catch(e) {
+    btn.textContent = '✓';
+    btn.disabled = false;
+    toast('Ошибка сохранения: ' + e.message, 'err');
+  }
+}
+
+// ═══════════════════════════════════════════════════
+//  ARCHIVE
+// ═══════════════════════════════════════════════════
+function archiveProduct(id, name) {
+  archiveTargetId = id;
+  document.getElementById('archiveModalText').textContent =
+    `«${name}» будет помечен как архивный в МойСклад. Это действие можно отменить в программе.`;
+  document.getElementById('archiveModal').classList.remove('hidden');
+}
+
+async function confirmArchive() {
+  if (!archiveTargetId) return;
+  closeModal();
+  try {
+    await api(`/entity/product/${archiveTargetId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ archived: true })
+    });
+    products = products.filter(p => p.id !== archiveTargetId);
+    rowOrder = rowOrder.filter(id => id !== archiveTargetId);
+    archiveTargetId = null;
+    renderTable();
+    updateStats();
+    toast('Товар убран в архив', 'ok');
+  } catch(e) {
+    toast('Ошибка: ' + e.message, 'err');
+  }
+}
+
+function closeModal() {
+  document.getElementById('archiveModal').classList.add('hidden');
+}
+
+// ═══════════════════════════════════════════════════
+//  DRAG & DROP (manual reorder)
+// ═══════════════════════════════════════════════════
+function initDragDrop() {
+  const tbody = document.getElementById('tableBody');
+  let dragId = null;
+
+  tbody.querySelectorAll('tr[data-id]').forEach(tr => {
+    tr.addEventListener('dragstart', e => {
+      dragId = tr.dataset.id;
+      tr.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    tr.addEventListener('dragend', () => {
+      tr.classList.remove('dragging');
+      tbody.querySelectorAll('tr').forEach(r => r.classList.remove('drop-target'));
+    });
+    tr.addEventListener('dragover', e => {
+      e.preventDefault();
+      tbody.querySelectorAll('tr').forEach(r => r.classList.remove('drop-target'));
+      tr.classList.add('drop-target');
+    });
+    tr.addEventListener('drop', e => {
+      e.preventDefault();
+      const targetId = tr.dataset.id;
+      if (!targetId || dragId === targetId) return;
+
+      const fromIdx = rowOrder.indexOf(dragId);
+      const toIdx = rowOrder.indexOf(targetId);
+      if (fromIdx === -1 || toIdx === -1) return;
+
+      rowOrder.splice(fromIdx, 1);
+      rowOrder.splice(toIdx, 0, dragId);
+
+      localStorage.setItem('priceMonitorOrder', JSON.stringify(rowOrder));
+      renderTable();
+    });
+  });
+}
+
+function toggleGroup(cat) {
+  if (collapsedGroups.has(cat)) collapsedGroups.delete(cat);
+  else collapsedGroups.add(cat);
+  renderTable();
+}
+
+// ═══════════════════════════════════════════════════
+//  COMPETITOR PRICES
+// ═══════════════════════════════════════════════════
+function handleCompetitorFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('pdfText').value = e.target.result;
+    document.getElementById('pdfPanel').classList.add('visible');
+    parsePdfText();
+  };
+  reader.readAsText(file);
+}
+
+function togglePdfPanel() {
+  document.getElementById('pdfPanel').classList.toggle('visible');
+}
+
+function parsePdfText() {
+  const text = document.getElementById('pdfText').value;
+  const lines = text.split('\n');
+  let matched = 0;
+  competitorPrices = {};
+
+  lines.forEach(line => {
+    line = line.trim();
+    if (!line) return;
+
+    // Try separator formats: ; , tab |
+    let parts = null;
+    for (const sep of [';', '\t', ',', '|']) {
+      const sp = line.split(sep);
+      if (sp.length >= 2) { parts = sp; break; }
+    }
+
+    if (parts) {
+      const namePart = parts.slice(0, parts.length - 1).join(' ').trim();
+      const pricePart = parts[parts.length - 1].replace(/[^\d.,]/g, '').replace(',', '.');
+      const price = parseFloat(pricePart);
+      if (!isNaN(price) && price > 0 && namePart.length > 1) {
+        competitorPrices[namePart.toLowerCase()] = price;
+        matched++;
+      }
+    } else {
+      // Try to find price at end of line
+      const m = line.match(/^(.+?)\s+([\d]{1,6}[.,]\d{2})\s*$/);
+      if (m) {
+        const price = parseFloat(m[2].replace(',', '.'));
+        competitorPrices[m[1].toLowerCase().trim()] = price;
+        matched++;
+      }
+    }
+  });
+
+  document.getElementById('statCompetitor').textContent = matched;
+  renderTable();
+  toast(`Загружено ${matched} позиций конкурента`, matched > 0 ? 'ok' : 'info');
+}
+
+function findCompetitorMatch(productName) {
+  const lower = productName.toLowerCase();
+
+  // Exact match
+  if (competitorPrices[lower]) return competitorPrices[lower];
+
+  // Partial match (at least 4 chars overlap)
+  for (const [key, price] of Object.entries(competitorPrices)) {
+    if (lower.includes(key) || key.includes(lower)) return price;
+    // Word overlap
+    const ourWords = lower.split(/\s+/).filter(w => w.length > 3);
+    const theirWords = key.split(/\s+/).filter(w => w.length > 3);
+    const overlap = ourWords.filter(w => theirWords.some(tw => tw.includes(w) || w.includes(tw)));
+    if (overlap.length >= 2) return price;
+  }
+  return null;
+}
+
+// ═══════════════════════════════════════════════════
+//  STATS
+// ═══════════════════════════════════════════════════
+function updateStats() {
+  const inStock = products.filter(p => !p.archived && p.stock > 0);
+  const all = products.filter(p => !p.archived);
+
+  document.getElementById('statInStock').textContent = inStock.length;
+  document.getElementById('statTotal').textContent = all.length;
+
+  const markups = inStock.filter(p => p.markup0 !== null).map(p => p.markup0);
+  const avgMk = markups.length ? Math.round(markups.reduce((a,b) => a+b, 0) / markups.length) : null;
+  document.getElementById('statAvgMarkup').textContent = avgMk !== null ? avgMk + '%' : '—';
+
+  const realMarkups = inStock.filter(p => p.realMarkup !== null).map(p => p.realMarkup);
+  const avgReal = realMarkups.length ? Math.round(realMarkups.reduce((a,b) => a+b, 0) / realMarkups.length) : null;
+  document.getElementById('statRealMarkup').textContent = avgReal !== null ? avgReal + '%' : '—';
+
+  document.getElementById('badge-instock').textContent = inStock.length;
+  document.getElementById('badge-outofstock').textContent = all.filter(p => p.stock <= 0).length;
+
+  const compCount = Object.keys(competitorPrices).length;
+  if (compCount === 0) document.getElementById('statCompetitor').textContent = '0';
+}
+
+// ═══════════════════════════════════════════════════
+//  SORT
+// ═══════════════════════════════════════════════════
+function sortBy(field) {
+  if (sortField === field) sortAsc = !sortAsc;
+  else { sortField = field; sortAsc = true; }
+
+  const cmp = (a, b) => {
+    let va = a[field], vb = b[field];
+    if (va === null || va === undefined) va = sortAsc ? Infinity : -Infinity;
+    if (vb === null || vb === undefined) vb = sortAsc ? Infinity : -Infinity;
+    if (typeof va === 'string') return sortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
+    return sortAsc ? va - vb : vb - va;
+  };
+
+  const inStock = currentTab === 'instock';
+  const filtered = products.filter(p => !p.archived && (inStock ? p.stock > 0 : p.stock <= 0));
+  filtered.sort(cmp);
+  rowOrder = [...filtered.map(p => p.id), ...rowOrder.filter(id => !filtered.find(p => p.id === id))];
+  renderTable();
+}
+
+// ═══════════════════════════════════════════════════
+//  TABS
+// ═══════════════════════════════════════════════════
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(`tab-${tab}`).classList.add('active');
+  renderTable();
+}
+
+// ═══════════════════════════════════════════════════
+//  EXPORT
+// ═══════════════════════════════════════════════════
+function exportCSV() {
+  const headers = ['Товар', 'Артикул', 'Категория', 'Остаток', 'Себестоимость',
+    ...priceTypeNames, 'Наценка %', 'Факт. цена', 'Факт. %', 'Δ месяц', 'Конкурент'];
+
+  const rows = products.filter(p => !p.archived).map(p => [
+    p.name, p.code, p.category, p.stock, p.costPrice,
+    ...p.prices.slice(0, priceTypeNames.length),
+    p.markup0 ?? '', p.realPrice ?? '', p.realMarkup ?? '',
+    p.markupDelta ?? '',
+    findCompetitorMatch(p.name) ?? ''
+  ]);
+
+  const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(';')).join('\n');
+  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `price-monitor-${new Date().toISOString().split('T')[0]}.csv`;
+  a.click();
+  toast('CSV экспортирован', 'ok');
+}
+
+// ═══════════════════════════════════════════════════
+//  UI HELPERS
+// ═══════════════════════════════════════════════════
+function setStatus(state, text) {
+  const dot = document.getElementById('statusDot');
+  const txt = document.getElementById('statusText');
+  dot.className = 'status-dot ' + state;
+  txt.textContent = text;
+}
+
+function showLoading(show) {
+  document.getElementById('loadingDiv').classList.toggle('hidden', !show);
+  document.getElementById('emptyDiv').classList.toggle('hidden', show);
+  document.getElementById('mainTable').style.display = show ? 'none' : '';
+  if (show) document.getElementById('mainTable').style.display = 'none';
+}
+
+function toast(msg, type = 'info') {
+  const container = document.getElementById('toastContainer');
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  container.appendChild(el);
+  setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity 0.4s'; setTimeout(() => el.remove(), 400); }, 3000);
+}
+
+function fmt(n) {
+  if (n === null || n === undefined) return '—';
+  return new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n) + ' ₽';
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Init: restore token
+const savedToken = localStorage.getItem('priceMonitorToken');
+if (savedToken) {
+  document.getElementById('tokenInput').value = savedToken;
+}
+
+document.getElementById('tokenInput').addEventListener('change', e => {
+  localStorage.setItem('priceMonitorToken', e.target.value);
+});
+</script>
+</body>
+</html>
