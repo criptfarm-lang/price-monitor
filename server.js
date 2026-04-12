@@ -97,9 +97,9 @@ async function msGetAll(endpoint) {
 // ─── Data builders ────────────────────────────────────────────
 function msVal(v) { return (v || v===0) ? v/100 : null; }
 
-function buildProduct(p, stockMap, salesThis, salesLast, priceTypes) {
+function buildProduct(p, stockMap, costMap, salesThis, salesLast, priceTypes) {
   const stock = stockMap[p.id] ?? 0;
-  const costPrice = msVal(p.buyPrice?.value) || 0;
+  const costPrice = costMap[p.id] || msVal(p.buyPrice?.value) || 0;
 
   // All sale prices in order of priceTypes
   const prices = priceTypes.map(pt => {
@@ -213,17 +213,35 @@ async function loadMSData() {
     name: sp.priceType?.name || 'Цена'
   }));
 
-  // 2. Products (non-archived)
-  const products = await msGetAll('/entity/product?archived=false');
+  // 2. Products (non-archived) — только нужные каталоги
+  const ALLOWED_CATEGORIES = ['ГОТОВАЯ ПРОДУКЦИЯ', 'ПРИВЛЕЧЕННЫЕ ТОВАРЫ'];
+  const allProducts = await msGetAll('/entity/product?archived=false');
+  const products = allProducts.filter(p => {
+    const path = (p.pathName || '').toUpperCase();
+    return ALLOWED_CATEGORIES.some(cat => path.startsWith(cat));
+  });
+  console.log(`Filtered: ${products.length} of ${allProducts.length} products`);
 
-  // 3. Stock
+  // 3. Stock — iterate pages, use assortment.meta.href for id
   let stockMap = {};
+  let costMap = {};
   try {
-    const stockResp = await msGet('/report/stock/all?stockMode=all&limit=1000');
-    (stockResp.rows || []).forEach(r => {
-      const id = r.meta?.href?.split('/').pop() || r.id;
-      if (id) stockMap[id] = r.stock || 0;
-    });
+    let offset = 0;
+    while (true) {
+      const stockResp = await msGet(`/report/stock/all?stockMode=all&limit=1000&offset=${offset}`);
+      const rows = stockResp.rows || [];
+      rows.forEach(r => {
+        const href = r.assortment?.meta?.href || r.meta?.href || '';
+        const id = href ? href.split('/').pop() : r.id;
+        if (id) {
+          stockMap[id] = (stockMap[id] || 0) + (r.stock || 0);
+          if (r.avgCost > 0) costMap[id] = r.avgCost / 100;
+        }
+      });
+      if (rows.length < 1000) break;
+      offset += 1000;
+    }
+    console.log('Stock loaded:', Object.keys(stockMap).length);
   } catch(e) {
     console.warn('Stock report failed:', e.message);
   }
@@ -244,7 +262,7 @@ async function loadMSData() {
   ]);
 
   // 5. Build
-  const built = products.map(p => buildProduct(p, stockMap, salesThis, salesLast, priceTypes));
+    const built = products.map(p => buildProduct(p, stockMap, costMap, salesThis, salesLast, priceTypes));
 
   return {
     products: built,
