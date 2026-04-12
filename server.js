@@ -353,8 +353,8 @@ async function router(req, res) {
       if (!p) return sendErr(res, 'не найден');
       // get stock for this product
       const sid = p.id;
-      const sr = await msGet(`/report/stock/all?stockMode=all&filter=assortmentId=${sid}&limit=5`);
-      return sendJSON(res, { product: { id: p.id, name: p.name, code: p.code }, stockRows: sr.rows });
+      const sr = await msGet(`/report/stock/all?stockMode=all&limit=5`);
+      return sendJSON(res, { product: { id: p.id, name: p.name, code: p.code }, sampleStockRows: sr.rows, total: sr.meta?.size });
     } catch(e) { return sendErr(res, e.message); }
   }
 
