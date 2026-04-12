@@ -336,6 +336,28 @@ async function router(req, res) {
     }
   }
 
+  // GET /api/debug/stock — показывает первые 3 строки отчёта остатков
+  if (pathname==='/api/debug/stock' && req.method==='GET') {
+    try {
+      const r = await msGet('/report/stock/all?stockMode=all&limit=3');
+      return sendJSON(res, { rows: r.rows, total: r.meta?.size });
+    } catch(e) { return sendErr(res, e.message); }
+  }
+
+  // GET /api/debug/product?code=XXXX — найти товар по коду
+  if (pathname==='/api/debug/product' && req.method==='GET') {
+    try {
+      const code = query.code || '';
+      const r = await msGet(`/entity/product?search=${encodeURIComponent(code)}&limit=1`);
+      const p = r.rows?.[0];
+      if (!p) return sendErr(res, 'не найден');
+      // get stock for this product
+      const sid = p.id;
+      const sr = await msGet(`/report/stock/all?stockMode=all&filter=assortmentId=${sid}&limit=5`);
+      return sendJSON(res, { product: { id: p.id, name: p.name, code: p.code }, stockRows: sr.rows });
+    } catch(e) { return sendErr(res, e.message); }
+  }
+
   // Serve index.html
   const MIME = {'.html':'text/html; charset=utf-8','.js':'application/javascript','.css':'text/css','.json':'application/json'};
   if (pathname==='/' || pathname==='/index.html') {
