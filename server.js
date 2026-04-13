@@ -97,7 +97,7 @@ async function msGetAll(endpoint) {
 // ─── Data builders ────────────────────────────────────────────
 function msVal(v) { return (v || v===0) ? v/100 : null; }
 
-function buildProduct(p, stockMap, costMap, salesThis, salesLast, priceTypes) {
+function buildProduct(p, stockMap, costMap, salesThis, salesLast, salesOlder, priceTypes) {
   const stock = stockMap[p.id] ?? 0;
 
   // Цены продажи
@@ -108,7 +108,7 @@ function buildProduct(p, stockMap, costMap, salesThis, salesLast, priceTypes) {
   while (prices.length < 3) prices.push(0);
 
   // Себестоимость: сначала из отгрузок (trimmed avg), затем из остатков
-  const costFromSales = salesThis[p.id]?.avgCost || salesLast[p.id]?.avgCost || 0;
+  const costFromSales = salesThis[p.id]?.avgCost || salesLast[p.id]?.avgCost || salesOlder[p.id]?.avgCost || 0;
   const rawCost = costFromSales || costMap[p.id] || msVal(p.buyPrice?.value) || 0;
 
   // Фильтруем выброс: если себест. < 20% от минимальной цены — мусор
@@ -338,9 +338,14 @@ async function loadMSData() {
   const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
   const lastMonthEndStr = `${lastMonthEnd.getFullYear()}-${pad(lastMonthEnd.getMonth()+1)}-${pad(lastMonthEnd.getDate())}`;
 
-  const [salesThis, salesLast] = await Promise.all([
+  // Для себестоимости берём 3 месяца назад
+  const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth()-2, 1);
+  const threeMonthsStart = `${threeMonthsAgo.getFullYear()}-${pad(threeMonthsAgo.getMonth()+1)}-01`;
+
+  const [salesThis, salesLast, salesOlder] = await Promise.all([
     getSalesData(thisMonthStart, today).catch(() => ({})),
-    getSalesData(lastMonthStart, lastMonthEndStr).catch(() => ({}))
+    getSalesData(lastMonthStart, lastMonthEndStr).catch(() => ({})),
+    getSalesData(threeMonthsStart, lastMonthStart).catch(() => ({}))
   ]);
 
   // 5. Build
@@ -348,7 +353,7 @@ async function loadMSData() {
   Object.keys(salesThis).forEach(id => {
     if (salesThis[id].avgCost) costMap[id] = salesThis[id].avgCost;
   });
-  const built = products.map(p => buildProduct(p, stockMap, costMap, salesThis, salesLast, priceTypes));
+  const built = products.map(p => buildProduct(p, stockMap, costMap, salesThis, salesLast, salesOlder, priceTypes));
 
   return {
     products: built,
