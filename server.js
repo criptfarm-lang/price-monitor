@@ -231,29 +231,39 @@ async function getSalesData(dateFrom, dateTo) {
   // Для каждого товара — собираем себестоимость по отдельным отгрузкам
   // чтобы можно было отфильтровать выбросы
   try {
+    // Берём отгрузки отсортированные по дате desc — нужны последние ненулевые себестоимости
     const demands = await msGetAll(
-      `/entity/demand?filter=moment>=${dateFrom}%2000%3A00%3A00;moment<=${dateTo}%2023%3A59%3A59&expand=positions`
+      `/entity/demand?filter=moment>=${dateFrom}%2000%3A00%3A00;moment<=${dateTo}%2023%3A59%3A59&expand=positions&order=moment,desc`
     );
+    const costByProduct = {}; // id -> [{ cost, moment }]
     for (const demand of demands) {
+      const moment = demand.moment || '';
       const positions = demand.positions?.rows || demand.positions || [];
       for (const pos of positions) {
         const href = pos.assortment?.meta?.href || '';
         const id = href.split('/').pop();
         if (!id) continue;
-        const cost = msVal(pos.cost) || 0;   // себестоимость единицы
+        const cost = msVal(pos.cost) || 0;
         const price = msVal(pos.price) || 0;
         const qty = pos.quantity || 0;
         if (qty <= 0) continue;
-        // Обновляем продажи если profit report не дал данных
         if (!result[id] && price > 0) {
           result[id] = { avgPrice: price, qty };
         }
+        // Собираем только ненулевые себестоимости с датой
         if (cost > 0) {
-          if (!costSamples[id]) costSamples[id] = [];
-          costSamples[id].push(cost);
+          if (!costByProduct[id]) costByProduct[id] = [];
+          costByProduct[id].push({ cost, moment });
         }
       }
     }
+    // Для каждого товара берём последние ненулевые записи (до 10) и применяем trimmedAvg
+    Object.keys(costByProduct).forEach(id => {
+      const sorted = costByProduct[id].sort((a,b) => b.moment.localeCompare(a.moment));
+      const recent = sorted.slice(0, 10).map(x => x.cost);
+      if (!costSamples[id]) costSamples[id] = [];
+      costSamples[id].push(...recent);
+    });
   } catch(e) {
     console.warn('Demands expand failed:', e.message);
   }
