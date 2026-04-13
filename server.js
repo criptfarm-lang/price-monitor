@@ -142,7 +142,17 @@ function buildProduct(p, stockMap, costMap, salesThis, salesLast, priceTypes) {
     id: p.id,
     name: p.name,
     code: p.code || p.article || '',
-    category: p.pathName || 'Без категории',
+    // Укрупнённая категория для группировки
+    category: (() => {
+      const path = p.pathName || '';
+      if (path.toUpperCase().startsWith('ГОТОВАЯ ПРОДУКЦИЯ')) return 'ГОТОВАЯ ПРОДУКЦИЯ';
+      if (path.toUpperCase().startsWith('ПРИВЛЕЧЕННЫЕ ТОВАРЫ')) {
+        // Оставляем первые два уровня: "ПРИВЛЕЧЕННЫЕ ТОВАРЫ/Морепродукты"
+        const parts = path.split('/');
+        return parts.slice(0, 2).join('/');
+      }
+      return path || 'Без категории';
+    })(),
     stock,
     costPrice,
     prices,

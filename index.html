@@ -73,7 +73,7 @@ textarea.ptxt:focus{border-color:var(--accent)}
 /* TABLE */
 .twrap{padding:0 20px 24px;overflow-x:auto}
 table{width:100%;border-collapse:collapse;font-size:12px}
-thead th{background:var(--bg2);color:var(--text3);font-family:var(--mono);font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;padding:7px 9px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;position:sticky;top:50px;z-index:10;cursor:pointer;user-select:none}
+thead th{background:var(--bg2);color:var(--text3);font-family:var(--mono);font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;padding:7px 9px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;position:sticky;top:0;z-index:10;cursor:pointer;user-select:none}
 thead th:hover{color:var(--text2)}
 thead th.sorted{color:var(--accent)}
 tbody tr{border-bottom:1px solid var(--border);transition:background .1s}
@@ -240,9 +240,11 @@ input.pinput.changed + .savebtn{display:inline-block}
         <th onclick="sortBy('stock')">Остаток ⇅</th>
         <th onclick="sortBy('costPrice')">Себест. ⇅</th>
         <th id="th-p0" onclick="sortBy('p0')">Цена 1 ⇅</th>
+        <th id="th-mk0" onclick="sortBy('markup0')">Нац.1 % ⇅</th>
         <th id="th-p1" onclick="sortBy('p1')" style="display:none">Цена 2 ⇅</th>
+        <th id="th-mk1" style="display:none">Нац.2 %</th>
         <th id="th-p2" onclick="sortBy('p2')" style="display:none">Цена 3 ⇅</th>
-        <th onclick="sortBy('markup0')">Наценка % ⇅</th>
+        <th id="th-mk2" style="display:none">Нац.3 %</th>
         <th onclick="sortBy('realPrice')">Факт. цена ⇅</th>
         <th onclick="sortBy('realMarkup')">Факт. % ⇅</th>
         <th>Δ мес.</th>
@@ -317,14 +319,18 @@ async function loadData() {
     products = data.products || [];
     priceTypes = data.priceTypes || [];
 
-    // Update price type column headers
+    // Update price type column headers + markup columns
     priceTypes.forEach((pt, i) => {
       const th = document.getElementById(`th-p${i}`);
       if (th) { th.firstChild.textContent = pt.name + ' ⇅'; th.style.display=''; }
+      const thm = document.getElementById(`th-mk${i}`);
+      if (thm) { thm.style.display=''; }
     });
     for (let i = priceTypes.length; i < 3; i++) {
       const th = document.getElementById(`th-p${i}`);
       if (th) th.style.display='none';
+      const thm = document.getElementById(`th-mk${i}`);
+      if (thm) thm.style.display='none';
     }
 
     // Merge rowOrder: keep saved order, append new
@@ -413,7 +419,6 @@ function buildRow(p) {
   if (p.stock <= 0) tr.classList.add('oos');
   tr.draggable = true;
 
-  const mkC = p.markup0===null?'':p.markup0>=30?'good':p.markup0>=15?'ok':'bad';
   const rmkC = p.realMarkup===null?'':p.realMarkup>=30?'good':p.realMarkup>=15?'ok':'bad';
 
   // Delta
@@ -435,11 +440,12 @@ function buildRow(p) {
     compH = `<div class="comp"><span class="comp-p">${fmt(cm)}</span>${diff!==null?`<span class="comp-d ${dc}">${dt}</span>`:''}</div>`;
   }
 
-  // Price cells
+  // Price + markup cells interleaved
   let pCells = '';
   for (let i = 0; i < 3; i++) {
     const show = i < priceTypes.length;
     const ptId = priceTypes[i]?.id || '';
+    // Price cell
     pCells += `<td style="${show?'':'display:none'}">
       <div class="pedit">
         <input class="pinput" data-id="${p.id}" data-pidx="${i}" data-ptid="${ptId}"
@@ -448,6 +454,11 @@ function buildRow(p) {
         <button class="savebtn" onclick="savePrice(this)">✓</button>
       </div>
     </td>`;
+    // Markup cell right after
+    const mk = (p.prices[i] > 0 && p.costPrice > 0)
+      ? Math.round((p.prices[i] - p.costPrice) / p.costPrice * 100) : null;
+    const mkC = mk === null ? '' : mk >= 30 ? 'good' : mk >= 15 ? 'ok' : 'bad';
+    pCells += `<td style="${show?'':'display:none'}" class="mk ${mkC}">${mk !== null ? mk+'%' : '—'}</td>`;
   }
 
   tr.innerHTML = `
@@ -459,7 +470,6 @@ function buildRow(p) {
     <td><span class="stock ${p.stock>0?'in':'out'}">${p.stock>0?'● '+p.stock:'○ 0'}</span></td>
     <td class="pcell">${p.costPrice>0?fmt(p.costPrice):'<span class="muted">—</span>'}</td>
     ${pCells}
-    <td class="mk ${mkC}">${p.markup0!==null?p.markup0+'%':'—'}</td>
     <td class="pcell">${p.realPrice?fmt(p.realPrice):'<span class="muted">—</span>'}</td>
     <td class="mk ${rmkC}">${p.realMarkup!==null?p.realMarkup+'%':'—'}</td>
     <td>${deltaH}</td>
