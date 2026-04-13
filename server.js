@@ -200,7 +200,7 @@ async function getSalesData(dateFrom, dateTo) {
     let offset = 0;
     while (true) {
       const report = await msGet(
-        `/report/profit/byproduct?momentFrom=${dateFrom} 00:00:00&momentTo=${dateTo} 23:59:59&limit=1000&offset=${offset}`
+        `/report/profit/byproduct?momentFrom=${dateFrom}%2000%3A00%3A00&momentTo=${dateTo}%2023%3A59%3A59&limit=1000&offset=${offset}`
       );
       const rows = report.rows || [];
       rows.forEach(row => {
@@ -232,7 +232,7 @@ async function getSalesData(dateFrom, dateTo) {
   // чтобы можно было отфильтровать выбросы
   try {
     const demands = await msGetAll(
-      `/entity/demand?filter=moment>=${dateFrom} 00:00:00;moment<=${dateTo} 23:59:59&expand=positions`
+      `/entity/demand?filter=moment>=${dateFrom}%2000%3A00%3A00;moment<=${dateTo}%2023%3A59%3A59&expand=positions`
     );
     for (const demand of demands) {
       const positions = demand.positions?.rows || demand.positions || [];
