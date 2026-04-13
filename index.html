@@ -419,7 +419,7 @@ function buildRow(p) {
   if (p.stock <= 0) tr.classList.add('oos');
   tr.draggable = true;
 
-  const rmkC = p.realMarkup===null?'':p.realMarkup>=30?'good':p.realMarkup>=15?'ok':'bad';
+  const rmkC = p.realMarkup===null?'':p.realMarkup>=23?'good':p.realMarkup>=0?'ok':'bad';
 
   // Delta
   let deltaH = '<span class="delta n">—</span>';
@@ -457,8 +457,9 @@ function buildRow(p) {
     // Markup cell right after
     const mk = (p.prices[i] > 0 && p.costPrice > 0)
       ? Math.round((p.prices[i] - p.costPrice) / p.costPrice * 100) : null;
-    const mkC = mk === null ? '' : mk >= 30 ? 'good' : mk >= 15 ? 'ok' : 'bad';
-    pCells += `<td style="${show?'':'display:none'}" class="mk ${mkC}">${mk !== null ? mk+'%' : '—'}</td>`;
+    const mkC = mk === null ? '' : mk >= 23 ? 'good' : mk >= 0 ? 'ok' : 'bad';
+    const mkTxt = mk !== null ? (mk > 0 ? '+'+mk+'%' : mk+'%') : '—';
+    pCells += `<td style="${show?'':'display:none'}" class="mk ${mkC}">${mkTxt}</td>`;
   }
 
   tr.innerHTML = `
@@ -471,7 +472,7 @@ function buildRow(p) {
     <td class="pcell">${p.costPrice>0?fmt(p.costPrice):'<span class="muted">—</span>'}</td>
     ${pCells}
     <td class="pcell">${p.realPrice?fmt(p.realPrice):'<span class="muted">—</span>'}</td>
-    <td class="mk ${rmkC}">${p.realMarkup!==null?p.realMarkup+'%':'—'}</td>
+    <td class="mk ${rmkC}">${p.realMarkup!==null?(p.realMarkup>0?'+'+p.realMarkup+'%':p.realMarkup+'%'):'—'}</td>
     <td>${deltaH}</td>
     <td>${compH}</td>
     <td><button class="actbtn" onclick="archiveModal('${p.id}','${esc(p.name)}')">архив</button></td>

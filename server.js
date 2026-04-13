@@ -99,17 +99,22 @@ function msVal(v) { return (v || v===0) ? v/100 : null; }
 
 function buildProduct(p, stockMap, costMap, salesThis, salesLast, priceTypes) {
   const stock = stockMap[p.id] ?? 0;
-  // Для готовой продукции себестоимость из отчёта прибыльности точнее
-  const costFromSales = salesThis[p.id]?.avgCost || salesLast[p.id]?.avgCost || 0;
-  const costPrice = costFromSales || costMap[p.id] || msVal(p.buyPrice?.value) || 0;
 
-  // All sale prices in order of priceTypes
+  // Цены продажи
   const prices = priceTypes.map(pt => {
     const sp = (p.salePrices||[]).find(x => x.priceType?.id === pt.id);
     return sp ? msVal(sp.value) : 0;
   });
-  // Pad to 3
   while (prices.length < 3) prices.push(0);
+
+  // Себестоимость: сначала из отгрузок (trimmed avg), затем из остатков
+  const costFromSales = salesThis[p.id]?.avgCost || salesLast[p.id]?.avgCost || 0;
+  const rawCost = costFromSales || costMap[p.id] || msVal(p.buyPrice?.value) || 0;
+
+  // Фильтруем выброс: если себест. < 20% от минимальной цены — мусор
+  const minPrice = prices.filter(x => x > 0).reduce((a,b) => Math.min(a,b), Infinity);
+  const costPrice = (rawCost > 0 && minPrice < Infinity && rawCost < minPrice * 0.20)
+    ? 0 : rawCost;
 
   const markup0 = (prices[0] > 0 && costPrice > 0)
     ? Math.round((prices[0] - costPrice) / costPrice * 100) : null;
